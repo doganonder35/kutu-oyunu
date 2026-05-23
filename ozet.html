@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Cache-Control" content="no-cache,no-store,must-revalidate"/>
+<title>📈 Özet Rapor</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0A0A0A;color:#F0ECD8;font-family:'Raleway',sans-serif;min-height:100vh;padding:16px}
+h1{font-size:1.5rem;font-weight:800;color:#FFE000;margin-bottom:14px}
+.card{background:#161616;border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:12px 14px;margin-bottom:10px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lbl{font-size:.6rem;color:#C9A000;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+input[type=date]{padding:5px 8px;background:#0F0F0F;border:1px solid rgba(255,255,255,.1);color:#F0ECD8;font-family:Raleway,sans-serif;font-size:.76rem;border-radius:5px;outline:none}
+button{padding:5px 12px;border:none;border-radius:5px;font-family:Raleway,sans-serif;font-weight:800;font-size:.72rem;cursor:pointer}
+.btn-y{background:#FFE000;color:#000}
+.btn-g{background:none;border:1px solid rgba(255,255,255,.12);color:#8A8474}
+.file-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.file-btn{padding:6px 14px;background:#FFE000;border-radius:5px;color:#000;font-weight:800;font-size:.74rem;cursor:pointer;white-space:nowrap;display:inline-block}
+.file-name{font-size:.7rem;color:#8A8474}
+.debug{font-size:.64rem;color:#8A8474;padding:5px 10px;background:#111;border-radius:5px;margin-bottom:10px}
+.sec-title{font-size:.64rem;letter-spacing:.12em;text-transform:uppercase;color:#C9A000;font-weight:700;margin-bottom:8px;margin-top:16px}
+.tbl-wrap{overflow-x:auto;border-radius:8px;border:1px solid rgba(255,255,255,.08);margin-bottom:4px}
+table{width:100%;border-collapse:collapse;min-width:1100px}
+thead th{padding:5px 8px;font-size:.54rem;letter-spacing:.05em;text-transform:uppercase;font-weight:700;text-align:right;border-bottom:2px solid rgba(255,224,0,.3);white-space:nowrap;color:#C9A000}
+thead th:first-child{text-align:left}
+tbody td{padding:4px 8px;font-size:.7rem;text-align:right;border-bottom:1px solid rgba(255,255,255,.04);white-space:nowrap;color:#F0ECD8}
+tbody td:first-child{text-align:left;font-weight:700;color:#FFE000;cursor:pointer;user-select:none}
+tbody td:first-child:hover{color:#fff}
+tbody tr.ref-row{display:none}
+tbody tr.ref-row.open{display:table-row}
+tbody tr.ref-row td{font-size:.62rem;font-weight:400;background:#0F0F0F;color:#F0ECD8}
+tbody tr.ref-row td:first-child{color:#8A8474;padding-left:20px}
+tfoot td{padding:4px 8px;font-size:.7rem;font-weight:800;text-align:right;border-top:2px solid rgba(255,224,0,.3);background:rgba(255,224,0,.04);color:#F0ECD8}
+tfoot td:first-child{text-align:left;color:#F5C800}
+.loading{padding:20px;color:#8A8474;font-size:.8rem}
+.arrow{font-size:.6rem;margin-left:4px;color:#8A8474}
+</style>
+</head>
+
+<body>
+<h1>📈 Özet Rapor</h1>
+
+<div class="card">
+  <div class="file-row">
+    <span class="lbl">📂 CRM Excel</span>
+    <input type="file" id="crmFile" accept=".xlsx,.xls" style="display:none" onchange="loadCRM(this)"/>
+    <label for="crmFile" class="file-btn">Dosya Seç</label>
+    <span id="crmFN" class="file-name">Dosya seçilmedi</span>
+  </div>
+
+  <div class="file-row">
+    <span class="lbl">📂 Ciro Excel</span>
+    <input type="file" id="ciroFile" accept=".xlsx,.xls" style="display:none" onchange="loadCiro(this)"/>
+    <label for="ciroFile" class="file-btn">Dosya Seç</label>
+    <span id="ciroFN" class="file-name">Dosya seçilmedi</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="row">
+    <span class="lbl">📅 Tarih Aralığı</span>
+    <input type="date" id="sd" onchange="build()"/>
+    <span style="color:#8A8474">—</span>
+    <input type="date" id="ed" onchange="build()"/>
+    <button class="btn-y" onclick="build()">Filtrele</button>
+    <button class="btn-g" onclick="clearD()">Tümü</button>
+  </div>
+</div>
+
+<div id="dbg" class="debug" style="display:none"></div>
+<div id="report"></div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyAk2oK4iQPQFIF5Z-aUCNTBfjP9NyP-GBQ",
+  authDomain:"kutu-oyunu-8769b.firebaseapp.com",
+  projectId:"kutu-oyunu-8769b"
+});
+
+const db=firebase.firestore();
+let CRM=null,CIRO=null;
+
+const _pot=note=>{
+  const n=(note||"").toString().toUpperCase();
+  const y=["RANDEVU","GELECEĞİM","GELECEM","KESİNLİKLE","MUTLAKA","ALACAĞIM","KAYDOLMAK","FİYAT","FIYAT","ÜCRET","TEKLİF","İLGİLENİYOR","BİLGİ VER","DÜŞÜNÜYORUM","MERAK","HAFTA","YARIN","BUGÜN","TAM OLUR","PLANLAMA"];
+  const d=["AÇMADI","ULAŞILAMIYOR","MEŞGUL","İLGİLENMİYOR","İSTEMİYOR","ALAKASIZ","REDDETTİ","KAPAT","RAHATSIZ","TEKRAR ARAMAYACAK","YANLIŞLIKLA"];
+  if(n.length<3)return"d";
+  if(y.some(k=>n.includes(k))&&!d.some(k=>n.includes(k)))return"y";
+  if(d.some(k=>n.includes(k)))return"d";
+  return"o";
+};
+
+const _cat=s=>{
+  s=(s||"").toString().toUpperCase().trim();
+  return{
+    olumlu:s==="OLUMLU",
+    olumsuz:s==="OLUMSUZ"||s==="TEKRAR",
+    sonra:s==="SONRA ARANACAK",
+    alakasiz:s.includes("ALAKASIZ")||s.includes("İLGİSİZ")||s.includes("ILGISIZ")
+  };
+};
+
+const norm=s=>(s||"").toString().replace(/\s+/g," ").trim();
+const normSube=s=>{s=(s||"").toString().trim();return s.includes("=>")?s.split("=>").pop().trim():s;};
+
+const parseTeklif=v=>{
+  if(!v||String(v).trim()===""||String(v).trim()==="-")return 0;
+  try{return parseInt(String(v).split(",")[0].replace(/\./g,"").trim())||0;}
+  catch{return 0;}
+};
+
+const parseCiroVal=v=>{
+  if(!v)return 0;
+  if(typeof v==="number")return v;
+  return parseFloat(String(v).replace(/[^\d.]/g,""))||0;
+};
+
+const parseDateCRM=v=>{
+  if(!v)return null;
+  const s=String(v).trim();
+  if(/^\d{2}\.\d{2}\.\d{4}/.test(s)){
+    const p=s.split(" ")[0].split(".");
+    return `${p[2]}-${p[1]}-${p[0]}`;
+  }
+  if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.substring(0,10);
+  if(!isNaN(v)&&Number(v)>10000){
+    const d=new Date(Math.round((Number(v)-25569)*86400*1000));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`;
+  }
+  return null;
+};
+
+const parseDateCiro=v=>{
+  if(!v)return null;
+  if(v instanceof Date||String(v).includes("T")){
+    const d=new Date(v);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  }
+  if(typeof v==="number"&&v>10000){
+    const d=new Date(Math.round((v-25569)*86400*1000));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`;
+  }
+  return parseDateCRM(v);
+};
+
+const pct=(a,b)=>b>0?`${Math.round(a/b*100)}%`:"—";
+const tl=n=>n>0?`${Math.round(n).toLocaleString("tr-TR")}₺`:"—";
+const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+const findCol=(keys,pats)=>{
+  for(const k of keys){
+    const n=k.replace(/[\s\u00a0]/g,"").toLowerCase()
+      .replace(/ı/g,"i").replace(/ş/g,"s").replace(/ğ/g,"g")
+      .replace(/ü/g,"u").replace(/ö/g,"o").replace(/ç/g,"c");
+    if(pats.some(p=>n===p||n.includes(p)))return k;
+  }
+  return null;
+};
+
+const readXLSX=(file,cb)=>{
+  const r=new FileReader();
+  r.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:"array",cellDates:true});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    cb(XLSX.utils.sheet_to_json(ws,{defval:"",raw:false}));
+  };
+  r.readAsArrayBuffer(file);
+};
+
+function loadCRM(inp){
+  const f=inp.files[0];
+  if(!f)return;
+  document.getElementById("crmFN").textContent="Yükleniyor...";
+  readXLSX(f,rows=>{
+    CRM=rows;
+    document.getElementById("crmFN").textContent=`${f.name} ✅ (${rows.length} satır)`;
+    saveToFB("crm",rows,f.name);
+    build();
+  });
+}
+
+function loadCiro(inp){
+  const f=inp.files[0];
+  if(!f)return;
+  document.getElementById("ciroFN").textContent="Yükleniyor...";
+  readXLSX(f,rows=>{
+    CIRO=rows;
+    document.getElementById("ciroFN").textContent=`${f.name} ✅ (${rows.length} satır)`;
+    saveToFB("ciro",rows,f.name);
+    build();
+  });
+}
+
+const CHUNK=150;
+
+function saveToFB(type,rows,fname){
+  const chunks=[];
+  for(let i=0;i<rows.length;i+=CHUNK)chunks.push(rows.slice(i,i+CHUNK));
+  const ts=Date.now();
+
+  db.doc(`ozet/${type}meta`).set({ts,chunks:chunks.length,fname:fname||""}).catch(console.warn);
+
+  const write=i=>{
+    if(i>=chunks.length)return;
+    db.doc(`ozet/${type}_${i}`).set({rows:chunks[i],ts})
+      .then(()=>write(i+1))
+      .catch(console.warn);
+  };
+
+  write(0);
+}
+
+function timeoutPromise(ms){
+  return new Promise((_,reject)=>setTimeout(()=>reject(new Error("Firebase timeout")),ms));
+}
+
+async function loadFromFB(){
+  document.getElementById("crmFN").textContent="Dosya seçilmedi";
+  document.getElementById("ciroFN").textContent="Dosya seçilmedi";
+
+  for(const type of ["crm","ciro"]){
+    try{
+      const meta=await Promise.race([
+        db.doc(`ozet/${type}meta`).get(),
+        timeoutPromise(4000)
+      ]);
+
+      if(!meta.exists)continue;
+
+      const data=meta.data()||{};
+      const chunks=Number(data.chunks)||0;
+      const fname=data.fname||"";
+
+      if(!chunks)continue;
+
+      let all=[];
+
+      for(let i=0;i<chunks;i++){
+        const d=await Promise.race([
+          db.doc(`ozet/${type}_${i}`).get(),
+          timeoutPromise(4000)
+        ]);
+
+        if(d.exists)all=all.concat(d.data().rows||[]);
+      }
+
+      if(!all.length)continue;
+
+      if(type==="crm"){
+        CRM=all;
+        document.getElementById("crmFN").textContent=(fname||"CRM")+` ✅ (${all.length} satır)`;
+      }else{
+        CIRO=all;
+        document.getElementById("ciroFN").textContent=(fname||"Ciro")+` ✅ (${all.length} satır)`;
+      }
+
+    }catch(e){
+      console.warn(type,e);
+      if(type==="crm")document.getElementById("crmFN").textContent="Dosya seçilmedi";
+      if(type==="ciro")document.getElementById("ciroFN").textContent="Dosya seçilmedi";
+    }
+  }
+
+  build();
+}
+
+function build(){
+  const sd=document.getElementById("sd").value;
+  const ed=document.getElementById("ed").value;
+
+  if(!CRM&&!CIRO){
+    document.getElementById("report").innerHTML='<div class="loading">Excel dosyalarını yükleyin.</div>';
+    document.getElementById("dbg").style.display="none";
+    return;
+  }
+
+  const crmKeys=CRM&&CRM.length?Object.keys(CRM[0]):[];
+  const ciroKeys=CIRO&&CIRO.length?Object.keys(CIRO[0]):[];
+
+  const CK=findCol(crmKeys,["kaydeden"])||"Kaydeden";
+  const CS=findCol(crmKeys,["sube"])||"Şube";
+  const CSONUC=findCol(crmKeys,["sonuc","sonuç"])||"Sonuç";
+  const CNOT=findCol(crmKeys,["notlar","not"])||"Notlar";
+  const CREF=findCol(crmKeys,["referans"])||"Referans";
+  const CT=findCol(crmKeys,["sonteklif","teklifficiyati"])||"Son Teklif Fiyatı";
+  const CDATE=findCol(crmKeys,["kayittarihi"])||"Kayıt Tarihi";
+
+  const CP=findCol(ciroKeys,["sonegitimekleyen","egitimekleyen"])||"Son Eğitim Ekleyen";
+  const CSB=findCol(ciroKeys,["sube"])||"Şube";
+  const CCREF=findCol(ciroKeys,["referans"])||"Referans";
+  const CCIRO=findCol(ciroKeys,["egitimciro"])||"Eğitim Ciro";
+  const CTAH=findCol(ciroKeys,["tahsilat"])||"Tahsilat";
+  const CKUR=findCol(ciroKeys,["kur"])||"Kur";
+  const CDATE2=findCol(ciroKeys,["kayittarihi"])||"Kayıt Tarihi";
+
+  const inRange=(v,isCRM)=>{
+    const d=isCRM?parseDateCRM(v):parseDateCiro(v);
+    if(!d)return true;
+    if(sd&&d<sd)return false;
+    if(ed&&d>ed)return false;
+    return true;
+  };
+
+  const kFilt=(CRM||[]).filter(r=>inRange(r[
