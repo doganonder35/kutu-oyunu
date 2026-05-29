@@ -2334,7 +2334,13 @@ function buildGameHub(){
 function buildHarita(){
   if(!_haritaLoaded){
     haritaLoad();
-    return'<div style="padding:20px;text-align:center;color:#8A8474;">⏳ Yükleniyor...</div>';
+    return'<div style="background:#0A0A0A;">'
+  + subeSecHtml
+  + statBar
+  + adminPanel
+  + illerHtml
+  + skorHtml
+  + '</div>';
   }
   
   // Şube seçici
@@ -2674,8 +2680,66 @@ showModal(prize>0?"🎉":"😔",prize>0?prize.toLocaleString("tr-TR")+" ₺":"Bo
 prize>0?"<strong>"+escH(box.owner)+"</strong>'in <strong>#"+box.num+"</strong> kutusundan ödül çıktı!":"<strong>"+escH(box.owner)+"</strong>'in kutusu boştu.",prize>0);
 if(prize>0)spawnConfetti();
 },650);
-}
 function attachEvents(){
+
+var haritaAdminSube = document.getElementById("haritaAdminSube");
+if(haritaAdminSube){
+  haritaAdminSube.addEventListener("change", function(){
+    _haritaSube = haritaAdminSube.value;
+    render();
+  });
+}
+
+var haritaOdulKaydet = document.getElementById("haritaOdulKaydet");
+if(haritaOdulKaydet){
+  haritaOdulKaydet.addEventListener("click", function(){
+    var txt = document.getElementById("haritaOdulListesi").value;
+    var arr = txt.split(",").map(function(x){
+      return parseInt(x.trim()) || 0;
+    }).filter(function(x){
+      return x > 0;
+    });
+
+    if(!arr.length){
+      alert("Geçerli ödül gir.");
+      return;
+    }
+
+    if(!_haritaCfg[_haritaSube]) _haritaCfg[_haritaSube] = {};
+    _haritaCfg[_haritaSube].odulListesi = arr;
+
+    if(_fbReady && _db){
+      _db.doc("harita/cfg").set(_haritaCfg);
+    }
+
+    render();
+  });
+}
+
+var haritaSubeReset = document.getElementById("haritaSubeReset");
+if(haritaSubeReset){
+  haritaSubeReset.addEventListener("click", function(){
+    if(!confirm("Bu şubenin haritası sıfırlansın mı?")) return;
+
+    if(_haritaData[_haritaSube]) delete _haritaData[_haritaSube];
+
+    if(gs.haritaScores && gs.haritaScores[_haritaSube]){
+      delete gs.haritaScores[_haritaSube];
+    }
+
+    haritaSave();
+    lsSet(SK_GAME, gs);
+    render();
+  });
+}
+
+/* mevcut kodların burada devam edecek */
+document.querySelectorAll("[data-setsube]").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    setSube(btn.dataset.setsube);
+  });
+});  
+document.querySelectorAll("[data-tab]").forEach(function(btn){  
 document.querySelectorAll("[data-tab]").forEach(function(btn){btn.addEventListener("click",function(){currentTab=btn.dataset.tab;render();if(currentTab==="crm")setTimeout(_bindDateBtns,100);});});
  document.querySelectorAll("[data-setgame]").forEach(function(btn){
   btn.addEventListener("click", function(){
