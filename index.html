@@ -2267,12 +2267,12 @@ function buildGameHub(){
 }
 
 function buildHarita(){
-  var subeSecHtml='<div style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.06);background:#0A0A0A;">';
-  SUBELER.forEach(function(s){
-    var aktif=_haritaSube===s.id;
-    subeSecHtml+='<button data-setsube="'+s.id+'" style="padding:5px 10px;background:'+(aktif?"#FFE000":"#161616")+';border:1px solid '+(aktif?"#FFE000":"rgba(255,255,255,.1)")+';border-radius:5px;color:'+(aktif?"#000":"#8A8474")+';font-family:Raleway,sans-serif;font-weight:700;font-size:.64rem;cursor:pointer;">'+s.ad+'</button>';
-  });
-  subeSecHtml+='</div>';
+  var subeSecHtml='<div style="padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.06);background:#0A0A0A;">'
+  +'<select id="subeSelect" style="width:100%;padding:9px 12px;background:#161616;border:1px solid rgba(255,224,0,.3);color:#FFE000;font-family:Raleway,sans-serif;font-weight:700;font-size:.82rem;border-radius:6px;outline:none;">'
+  +SUBELER.map(function(s){
+    return'<option value="'+s.id+'"'+(s.id===_haritaSube?' selected':'')+'>'+s.ad+'</option>';
+  }).join("")
+  +'</select></div>';
 
   var subeData=_haritaData[_haritaSube]||{};
   var acikSayi=Object.keys(subeData).length;
@@ -2357,7 +2357,39 @@ function haritaIlDetay(subeId,ilNo){
   var sehir=SEHIRLER.find(function(s){return s.no===ilNo;});
   showModal("🗺️",ilNo+" - "+(sehir?sehir.ad:""),"Personel: <strong>"+escH(d.personel)+"</strong><br>Ödül: <span style='color:#FFE000'>"+d.odul.toLocaleString("tr-TR")+"₺</span><br>Tarih: "+d.tarih,false);
 }
-// ══ HARITA OYUNU SON ══
+function buildHaritaAdmin(){
+  return'<div style="padding:16px 12px;max-width:820px;margin:0 auto;">'
+    +'<div class="bb" style="font-size:1.6rem;color:#FFE000;margin-bottom:14px;">🗺️ Harita Ayarları</div>'
+    +'<div style="background:#161616;border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:14px;margin-bottom:12px;">'
+    +'<div style="font-size:.68rem;color:#C9A000;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px;">Şube Ödül Listesi (virgülle ayır)</div>'
+    +SUBELER.map(function(s){
+      var liste=((_haritaCfg[s.id]||{}).odulListesi||[200,300,400,500,600,700,800,900,1000,1500,2000,3000]).join(",");
+      return'<div style="margin-bottom:8px;"><div style="font-size:.72rem;color:#8A8474;margin-bottom:3px;">'+s.ad+'</div>'
+        +'<div style="display:flex;gap:6px;">'
+        +'<input id="haritaCfg_'+s.id+'" value="'+escH(liste)+'" style="flex:1;padding:6px 10px;background:#0F0F0F;border:1px solid rgba(255,255,255,.08);color:#F0ECD8;font-family:Raleway,sans-serif;font-size:.78rem;border-radius:5px;outline:none;">'
+        +'<button onclick="haritaCfgSave(\''+s.id+'\')" style="padding:6px 12px;background:#FFE000;border:none;border-radius:5px;color:#000;font-family:Raleway,sans-serif;font-weight:800;font-size:.72rem;cursor:pointer;">Kaydet</button>'
+        +'</div></div>';
+    }).join("")
+    +'</div></div>';
+}
+function haritaCfgSave(subeId){
+  var inp=document.getElementById("haritaCfg_"+subeId);
+  if(!inp)return;
+  var vals=inp.value.split(",").map(function(v){return parseInt(v.trim());}).filter(function(v){return v>0;});
+  if(!vals.length)return;
+  if(!_haritaCfg[subeId])_haritaCfg[subeId]={};
+  _haritaCfg[subeId].odulListesi=vals;
+  if(_fbReady&&_db){
+    _db.doc("harita/cfg").set(_haritaCfg).then(function(){
+      var fl=document.createElement("div");
+      fl.textContent="✅ Kaydedildi";
+      fl.style.cssText="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a3a1a;border:1px solid #FFE000;color:#FFE000;padding:8px 16px;border-radius:8px;font-family:Raleway,sans-serif;font-weight:700;font-size:.8rem;z-index:9999;";
+      document.body.appendChild(fl);setTimeout(function(){fl.remove();},2000);
+    });
+  }
+}
+
+  // ══ HARITA OYUNU SON ══
 
 function buildAdmin(){
   if(_currentGame==="harita") return buildHaritaAdmin();
@@ -2565,6 +2597,8 @@ setTimeout(_bindDateBtns,50);
 document.querySelectorAll("[data-setgame]").forEach(function(btn){
   btn.addEventListener("click", function(){
     setGame(btn.dataset.setgame);});});
+var subeSelect=document.getElementById("subeSelect");
+if(subeSelect)subeSelect.addEventListener("change",function(){setSube(subeSelect.value);});  
 document.querySelectorAll("[data-filter]").forEach(function(btn){btn.addEventListener("click",function(){currentFilter=btn.dataset.filter;render();});});
 document.querySelectorAll(".box-card:not(.opened)").forEach(function(card){card.addEventListener("click",function(){openBox(parseInt(card.dataset.boxid));});});
 document.querySelectorAll(".box-card.reopenable").forEach(function(card){
