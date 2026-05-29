@@ -2204,161 +2204,89 @@ function _renderOzetTablo(title,map,calcFn){
 // ══ ÖZET SON ══
 
 // ══ HARITA OYUNU ══
-var _currentGame="kutu"; // "kutu" veya "harita"
-var _haritaSube=SUBELER[0].id; // seçili şube
-var _haritaData={}; // {subeId: {il01:{personel,odul,acikTarih}, ...}}
-var _haritaCfg={}; // {subeId: {odulHavuzu, odulListesi}}
+var _currentGame="kutu";
+var _haritaSube="alsancak";
+var _haritaData={};
+var _haritaCfg={};
 var _haritaLoaded=false;
 
 var SEHIRLER=[{no:"01",ad:"Adana"},{no:"02",ad:"Adıyaman"},{no:"03",ad:"Afyonkarahisar"},{no:"04",ad:"Ağrı"},{no:"05",ad:"Amasya"},{no:"06",ad:"Ankara"},{no:"07",ad:"Antalya"},{no:"08",ad:"Artvin"},{no:"09",ad:"Aydın"},{no:"10",ad:"Balıkesir"},{no:"11",ad:"Bilecik"},{no:"12",ad:"Bingöl"},{no:"13",ad:"Bitlis"},{no:"14",ad:"Bolu"},{no:"15",ad:"Burdur"},{no:"16",ad:"Bursa"},{no:"17",ad:"Çanakkale"},{no:"18",ad:"Çankırı"},{no:"19",ad:"Çorum"},{no:"20",ad:"Denizli"},{no:"21",ad:"Diyarbakır"},{no:"22",ad:"Edirne"},{no:"23",ad:"Elazığ"},{no:"24",ad:"Erzincan"},{no:"25",ad:"Erzurum"},{no:"26",ad:"Eskişehir"},{no:"27",ad:"Gaziantep"},{no:"28",ad:"Giresun"},{no:"29",ad:"Gümüşhane"},{no:"30",ad:"Hakkari"},{no:"31",ad:"Hatay"},{no:"32",ad:"Isparta"},{no:"33",ad:"Mersin"},{no:"34",ad:"İstanbul"},{no:"35",ad:"İzmir"},{no:"36",ad:"Kars"},{no:"37",ad:"Kastamonu"},{no:"38",ad:"Kayseri"},{no:"39",ad:"Kırklareli"},{no:"40",ad:"Kırşehir"},{no:"41",ad:"Kocaeli"},{no:"42",ad:"Konya"},{no:"43",ad:"Kütahya"},{no:"44",ad:"Malatya"},{no:"45",ad:"Manisa"},{no:"46",ad:"Kahramanmaraş"},{no:"47",ad:"Mardin"},{no:"48",ad:"Muğla"},{no:"49",ad:"Muş"},{no:"50",ad:"Nevşehir"},{no:"51",ad:"Niğde"},{no:"52",ad:"Ordu"},{no:"53",ad:"Rize"},{no:"54",ad:"Sakarya"},{no:"55",ad:"Samsun"},{no:"56",ad:"Siirt"},{no:"57",ad:"Sinop"},{no:"58",ad:"Sivas"},{no:"59",ad:"Tekirdağ"},{no:"60",ad:"Tokat"},{no:"61",ad:"Trabzon"},{no:"62",ad:"Tunceli"},{no:"63",ad:"Şanlıurfa"},{no:"64",ad:"Uşak"},{no:"65",ad:"Van"},{no:"66",ad:"Yozgat"},{no:"67",ad:"Zonguldak"},{no:"68",ad:"Aksaray"},{no:"69",ad:"Bayburt"},{no:"70",ad:"Karaman"},{no:"71",ad:"Kırıkkale"},{no:"72",ad:"Batman"},{no:"73",ad:"Şırnak"},{no:"74",ad:"Bartın"},{no:"75",ad:"Ardahan"},{no:"76",ad:"Iğdır"},{no:"77",ad:"Yalova"},{no:"78",ad:"Karabük"},{no:"79",ad:"Kilis"},{no:"80",ad:"Osmaniye"},{no:"81",ad:"Düzce"}];
 var SUBELER=[{id:"alsancak",ad:"İZMİR-ALSANCAK"},{id:"karsiyaka",ad:"İZMİR-KARŞIYAKA"},{id:"buca",ad:"İZMİR-BUCA"},{id:"gaziemir",ad:"İZMİR-GAZİEMİR"},{id:"tokat",ad:"TOKAT"},{id:"eryaman",ad:"ANKARA-ERYAMAN"},{id:"elvankent",ad:"ANKARA-ELVANKENT"}];
 
-// Harita verisini Firebase'den yükle
+// ── DÜZELTME: _haritaLoaded hemen true, Firebase arka planda ──
 function haritaLoad(){
-  var def={};
-  SUBELER.forEach(function(s){
-    def[s.id]={odulListesi:[200,300,400,500,600,700,800,900,1000,1500,2000,3000]};
-  });
-
-  if(!_fbReady||!_db){
-    _haritaCfg=def;
-    _haritaLoaded=true;
-    render();
-    return;
-  }
-
+  _haritaLoaded=true;
+  if(!_fbReady||!_db)return;
   _db.doc("harita/data").get().then(function(doc){
-    if(doc.exists){
-      _haritaData=doc.data().iller||{};
-    }
-    return _db.doc("harita/cfg").get();
-  }).then(function(doc){
-    if(doc.exists){
-      _haritaCfg=doc.data()||def;
-    } else {
+    if(doc.exists){_haritaData=doc.data().iller||{};}
+    if(currentTab==="game")render();
+  }).catch(function(){if(currentTab==="game")render();});
+  _db.doc("harita/cfg").get().then(function(doc){
+    if(doc.exists){_haritaCfg=doc.data()||{};}
+    else{
+      var def={};
+      SUBELER.forEach(function(s){def[s.id]={odulListesi:[200,300,400,500,600,700,800,900,1000,1500,2000,3000]};});
       _haritaCfg=def;
     }
-
-    _haritaLoaded=true;
-    render();
-  }).catch(function(e){
-    console.warn("Harita yükleme hatası:", e);
-    _haritaCfg=def;
-    _haritaLoaded=true;
-    render();
-  });
+    if(currentTab==="game")render();
+  }).catch(function(){if(currentTab==="game")render();});
 }
 
-// Harita kaydeden
-function haritaSave(){
-  if(!_fbReady||!_db)return;
-  _db.doc("harita/data").set({iller:_haritaData,ts:Date.now()});
-}
+function haritaSave(){if(!_fbReady||!_db)return;_db.doc("harita/data").set({iller:_haritaData,ts:Date.now()});}
 
-// İl aç — admin seçer personeli ve il otomatik sıradaki
 function haritaAcIl(subeId,personelAdi){
   var sube=_haritaData[subeId]||{};
-  // Sıradaki açılmamış ili bul
   var sonraki=null;
-  for(var i=0;i<SEHIRLER.length;i++){
-    var no=SEHIRLER[i].no;
-    if(!sube[no]){sonraki=SEHIRLER[i];break;}
-  }
+  for(var i=0;i<SEHIRLER.length;i++){if(!sube[SEHIRLER[i].no]){sonraki=SEHIRLER[i];break;}}
   if(!sonraki){showModal("ℹ️","Tamamlandı","Bu şubenin tüm illeri açıldı!",false);return;}
-  
-  // Ödül belirle
-  var cfg=_haritaCfg[subeId]||{};
-  var liste=cfg.odulListesi||[200,300,500,1000,2000];
+  var cfg2=_haritaCfg[subeId]||{};
+  var liste=cfg2.odulListesi||[200,300,500,1000,2000];
   var odul=liste[Math.floor(Math.random()*liste.length)];
-  
   if(!_haritaData[subeId])_haritaData[subeId]={};
-  _haritaData[subeId][sonraki.no]={
-    personel:personelAdi,
-    odul:odul,
-    tarih:new Date().toLocaleDateString("tr-TR")
-  };
-  haritaSave();
-  
-  // Skor hesapla
-  haritaSkoru(subeId);
-  render();
-  showModal("🗺️","İl Açıldı!","<strong>"+sonraki.no+" - "+sonraki.ad+"</strong><br>Personel: "+personelAdi+"<br>Ödül Havuzuna: <span style='color:#FFE000'>"+odul+"₺</span>",false);
+  _haritaData[subeId][sonraki.no]={personel:personelAdi,odul:odul,tarih:new Date().toLocaleDateString("tr-TR")};
+  haritaSave();haritaSkoru(subeId);render();
+  showModal("🗺️","İl Açıldı!","<strong>"+sonraki.no+" - "+sonraki.ad+"</strong><br>Personel: "+personelAdi+"<br>Ödül: <span style='color:#FFE000'>"+odul+"₺</span>",false);
 }
 
-// O şubedeki toplam ödülü kayıt oranına göre dağıt
 function haritaSkoru(subeId){
   var sube=_haritaData[subeId]||{};
-  // Personel başına açtığı il sayısı
-  var kisiIl={};
-  var toplamIl=0;
-  Object.keys(sube).forEach(function(no){
-    var p=sube[no].personel;
-    if(!p)return;
-    kisiIl[p]=(kisiIl[p]||0)+1;
-    toplamIl++;
-  });
-  // Personel başına toplam ödül
   var kisiOdul={};
-  Object.keys(sube).forEach(function(no){
-    var d=sube[no];
-    var p=d.personel;if(!p)return;
-    kisiOdul[p]=(kisiOdul[p]||0)+d.odul;
-  });
-  // gs.scores içine harita ödüllerini kaydet
+  Object.keys(sube).forEach(function(no){var p=sube[no].personel;if(!p)return;kisiOdul[p]=(kisiOdul[p]||0)+sube[no].odul;});
   if(!gs.haritaScores)gs.haritaScores={};
   gs.haritaScores[subeId]=kisiOdul;
-  lsSet(SK_GAME,gs);
-  if(_fbReady&&_db)fbWrite(SK_GAME,gs);
+  lsSet(SK_GAME,gs);if(_fbReady&&_db)fbWrite(SK_GAME,gs);
 }
 
-// Harita oyunu ana sayfa
 function buildGameHub(){
   var gamePickerHtml='<div style="display:flex;gap:10px;padding:12px 8px;border-bottom:1px solid rgba(255,255,255,.06);">'
-    +'<button data-setgame="kutu" style="flex:1;padding:10px;background:'
-    +(_currentGame==="kutu"?"#FFE000":"#161616")+';border:1px solid '+(_currentGame==="kutu"?"#FFE000":"rgba(255,255,255,.1)")+';border-radius:8px;color:'+(_currentGame==="kutu"?"#000":"#F0ECD8")+';font-family:Raleway,sans-serif;font-weight:800;font-size:.82rem;cursor:pointer;">📦 Kutu Oyunu</button>'
-    +'<button data-setgame="harita" style="flex:1;padding:10px;background:'
-    +(_currentGame==="harita"?"#FFE000":"#161616")+';border:1px solid '+(_currentGame==="harita"?"#FFE000":"rgba(255,255,255,.1)")+';border-radius:8px;color:'+(_currentGame==="harita"?"#000":"#F0ECD8")+';font-family:Raleway,sans-serif;font-weight:800;font-size:.82rem;cursor:pointer;">🗺️ Türkiye Haritası</button>'
+    +'<button data-setgame="kutu" style="flex:1;padding:10px;background:'+(_currentGame==="kutu"?"#FFE000":"#161616")+';border:1px solid '+(_currentGame==="kutu"?"#FFE000":"rgba(255,255,255,.1)")+';border-radius:8px;color:'+(_currentGame==="kutu"?"#000":"#F0ECD8")+';font-family:Raleway,sans-serif;font-weight:800;font-size:.82rem;cursor:pointer;">📦 Kutu Oyunu</button>'
+    +'<button data-setgame="harita" style="flex:1;padding:10px;background:'+(_currentGame==="harita"?"#FFE000":"#161616")+';border:1px solid '+(_currentGame==="harita"?"#FFE000":"rgba(255,255,255,.1)")+';border-radius:8px;color:'+(_currentGame==="harita"?"#000":"#F0ECD8")+';font-family:Raleway,sans-serif;font-weight:800;font-size:.82rem;cursor:pointer;">🗺️ Türkiye Haritası</button>'
     +'</div>';
-  
-  if(_currentGame==="kutu") return gamePickerHtml+buildGame();
+  if(_currentGame==="kutu")return gamePickerHtml+buildGame();
   return gamePickerHtml+buildHarita();
 }
 
-// Harita oyunu sayfası
 function buildHarita(){
-  if(!_haritaLoaded){
-    haritaLoad();
-    return'<div style="padding:20px;text-align:center;color:#8A8474;">⏳ Yükleniyor...</div>';
-  }
-  
-  // Şube seçici
   var subeSecHtml='<div style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 8px;border-bottom:1px solid rgba(255,255,255,.06);background:#0A0A0A;">';
   SUBELER.forEach(function(s){
     var aktif=_haritaSube===s.id;
     subeSecHtml+='<button data-setsube="'+s.id+'" style="padding:5px 10px;background:'+(aktif?"#FFE000":"#161616")+';border:1px solid '+(aktif?"#FFE000":"rgba(255,255,255,.1)")+';border-radius:5px;color:'+(aktif?"#000":"#8A8474")+';font-family:Raleway,sans-serif;font-weight:700;font-size:.64rem;cursor:pointer;">'+s.ad+'</button>';
   });
   subeSecHtml+='</div>';
-  
+
   var subeData=_haritaData[_haritaSube]||{};
-  var subeCfg=_haritaCfg[_haritaSube]||{};
   var acikSayi=Object.keys(subeData).length;
   var toplamOdul=0;
   Object.keys(subeData).forEach(function(no){toplamOdul+=subeData[no].odul||0;});
-  
-  // Sonraki il
   var sonrakiIl=null;
-  for(var i=0;i<SEHIRLER.length;i++){
-    if(!subeData[SEHIRLER[i].no]){sonrakiIl=SEHIRLER[i];break;}
-  }
-  
-  // Stat bar
+  for(var i=0;i<SEHIRLER.length;i++){if(!subeData[SEHIRLER[i].no]){sonrakiIl=SEHIRLER[i];break;}}
+
   var statBar='<div style="display:flex;gap:0;text-align:center;border-bottom:1px solid rgba(255,255,255,.06);">'
     +'<div style="flex:1;padding:10px;border-right:1px solid rgba(255,255,255,.04);"><div style="font-size:1.3rem;font-weight:800;color:#FFE000;">'+acikSayi+'</div><div style="font-size:.58rem;color:#8A8474;letter-spacing:.1em;text-transform:uppercase;">Açılan</div></div>'
     +'<div style="flex:1;padding:10px;border-right:1px solid rgba(255,255,255,.04);"><div style="font-size:1.3rem;font-weight:800;color:#FFE000;">'+(81-acikSayi)+'</div><div style="font-size:.58rem;color:#8A8474;letter-spacing:.1em;text-transform:uppercase;">Kalan</div></div>'
     +'<div style="flex:1;padding:10px;"><div style="font-size:1.3rem;font-weight:800;color:#4ADE80;">'+toplamOdul.toLocaleString("tr-TR")+'₺</div><div style="font-size:.58rem;color:#8A8474;letter-spacing:.1em;text-transform:uppercase;">Havuz</div></div>'
     +'</div>';
-  
-  // Admin: il aç paneli
+
   var adminPanel="";
   if(isAdmin&&sonrakiIl){
     var playerOpts=cfg.players.map(function(p){return'<option value="'+escH(p.name)+'">'+escH(p.name)+'</option>';}).join("");
@@ -2367,13 +2295,11 @@ function buildHarita(){
       +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
       +'<select id="haritaPersonel" style="flex:1;min-width:140px;padding:6px 10px;background:#0F0F0F;border:1px solid rgba(255,255,255,.1);color:#F0ECD8;font-family:Raleway,sans-serif;font-size:.76rem;border-radius:5px;outline:none;">'+playerOpts+'</select>'
       +'<button data-haritaac="1" style="padding:6px 16px;background:#FFE000;border:none;border-radius:5px;color:#000;font-family:Raleway,sans-serif;font-weight:800;font-size:.76rem;cursor:pointer;">🗺️ İl Aç</button>'
-      +'</div>'
-      +'</div>';
+      +'</div></div>';
   } else if(isAdmin&&!sonrakiIl){
     adminPanel='<div style="padding:10px 8px;background:#111;text-align:center;color:#4ADE80;font-size:.8rem;">✅ Bu şubenin tüm illeri açıldı!</div>';
   }
-  
-  // İller grid
+
   var illerHtml='<div style="padding:8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:6px;">';
   SEHIRLER.forEach(function(s){
     var acik=subeData[s.no];
@@ -2393,20 +2319,16 @@ function buildHarita(){
     }
   });
   illerHtml+='</div>';
-  
-  // Personel skorları
-  var kisiOdul={};
-  var totalAcik=0;
+
+  var kisiOdul={};var totalAcik=0;
   Object.keys(subeData).forEach(function(no){
     var d=subeData[no];var p=d.personel;if(!p)return;
-    kisiOdul[p]=(kisiOdul[p]||0)+d.odul;
-    totalAcik++;
+    kisiOdul[p]=(kisiOdul[p]||0)+d.odul;totalAcik++;
   });
   var skorHtml='';
   if(Object.keys(kisiOdul).length>0){
     var sorted=Object.keys(kisiOdul).sort(function(a,b){return kisiOdul[b]-kisiOdul[a];});
-    skorHtml='<div style="padding:8px;border-top:1px solid rgba(255,255,255,.06);">'
-      +'<div style="font-size:.62rem;color:#C9A000;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;">🏆 Harita Skorları</div>';
+    skorHtml='<div style="padding:8px;border-top:1px solid rgba(255,255,255,.06);"><div style="font-size:.62rem;color:#C9A000;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;">🏆 Harita Skorları</div>';
     sorted.forEach(function(p,idx){
       var ilSayisi=Object.keys(subeData).filter(function(no){return subeData[no].personel===p;}).length;
       var oran=totalAcik>0?Math.round(ilSayisi/totalAcik*100):0;
@@ -2419,8 +2341,8 @@ function buildHarita(){
     });
     skorHtml+='</div>';
   }
-  
-  return'<div style="background:#0A0A0A;">'+statBar+adminPanel+illerHtml+skorHtml+'</div>';
+
+  return'<div style="background:#0A0A0A;">'+subeSecHtml+statBar+adminPanel+illerHtml+skorHtml+'</div>';
 }
 
 function setGame(g){_currentGame=g;render();}
@@ -2430,14 +2352,13 @@ function haritaAcBtn(){
   if(!sel||!sel.value)return;
   haritaAcIl(_haritaSube,sel.value);
 }
-
 function haritaIlDetay(subeId,ilNo){
-  var d=(_haritaData[subeId]||{})[ilNo];
-  if(!d)return;
+  var d=(_haritaData[subeId]||{})[ilNo];if(!d)return;
   var sehir=SEHIRLER.find(function(s){return s.no===ilNo;});
   showModal("🗺️",ilNo+" - "+(sehir?sehir.ad:""),"Personel: <strong>"+escH(d.personel)+"</strong><br>Ödül: <span style='color:#FFE000'>"+d.odul.toLocaleString("tr-TR")+"₺</span><br>Tarih: "+d.tarih,false);
 }
 // ══ HARITA OYUNU SON ══
+
 function buildAdmin(){
   if(_currentGame==="harita") return buildHaritaAdmin();
 var tp=cfg.prizes.reduce(function(s,p){return s+p.count;},0);
