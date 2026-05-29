@@ -2627,6 +2627,27 @@ if(prize>0)spawnConfetti();
 }
 function attachEvents(){
 document.querySelectorAll("[data-tab]").forEach(function(btn){btn.addEventListener("click",function(){currentTab=btn.dataset.tab;render();if(currentTab==="crm")setTimeout(_bindDateBtns,100);});});
+ document.querySelectorAll("[data-setgame]").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    setGame(btn.dataset.setgame);
+  });
+});
+document.querySelectorAll("[data-setsube]").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    setSube(btn.dataset.setsube);
+  });
+});
+document.querySelectorAll("[data-haritaac]").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    haritaAcBtn();
+  });
+});
+document.querySelectorAll("[data-ildetay]").forEach(function(btn){
+  btn.addEventListener("click", function(){
+    var p=btn.dataset.ildetay.split(",");
+    haritaIlDetay(p[0],p[1]);
+  });
+}); 
 // Her render sonrası takvim butonlarını bağla
 setTimeout(_bindDateBtns,50);
 document.querySelectorAll("[data-filter]").forEach(function(btn){btn.addEventListener("click",function(){currentFilter=btn.dataset.filter;render();});});
