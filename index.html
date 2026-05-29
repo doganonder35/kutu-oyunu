@@ -2204,6 +2204,7 @@ function _renderOzetTablo(title,map,calcFn){
 // ══ ÖZET SON ══
 
 // ══ HARITA OYUNU ══
+var SUBELER=[{id:"alsancak",ad:"İZMİR-ALSANCAK"},{id:"karsiyaka",ad:"İZMİR-KARŞIYAKA"},{id:"buca",ad:"İZMİR-BUCA"},{id:"gaziemir",ad:"İZMİR-GAZİEMİR"},{id:"tokat",ad:"TOKAT"},{id:"eryaman",ad:"ANKARA-ERYAMAN"},{id:"elvankent",ad:"ANKARA-ELVANKENT"}];  
 var _currentGame="kutu"; // "kutu" veya "harita"
 var _haritaSube=SUBELER[0].id; // seçili şube
 var _haritaData={}; // {subeId: {il01:{personel,odul,acikTarih}, ...}}
@@ -2211,21 +2212,29 @@ var _haritaCfg={}; // {subeId: {odulHavuzu, odulListesi}}
 var _haritaLoaded=false;
 
 var SEHIRLER=[{no:"01",ad:"Adana"},{no:"02",ad:"Adıyaman"},{no:"03",ad:"Afyonkarahisar"},{no:"04",ad:"Ağrı"},{no:"05",ad:"Amasya"},{no:"06",ad:"Ankara"},{no:"07",ad:"Antalya"},{no:"08",ad:"Artvin"},{no:"09",ad:"Aydın"},{no:"10",ad:"Balıkesir"},{no:"11",ad:"Bilecik"},{no:"12",ad:"Bingöl"},{no:"13",ad:"Bitlis"},{no:"14",ad:"Bolu"},{no:"15",ad:"Burdur"},{no:"16",ad:"Bursa"},{no:"17",ad:"Çanakkale"},{no:"18",ad:"Çankırı"},{no:"19",ad:"Çorum"},{no:"20",ad:"Denizli"},{no:"21",ad:"Diyarbakır"},{no:"22",ad:"Edirne"},{no:"23",ad:"Elazığ"},{no:"24",ad:"Erzincan"},{no:"25",ad:"Erzurum"},{no:"26",ad:"Eskişehir"},{no:"27",ad:"Gaziantep"},{no:"28",ad:"Giresun"},{no:"29",ad:"Gümüşhane"},{no:"30",ad:"Hakkari"},{no:"31",ad:"Hatay"},{no:"32",ad:"Isparta"},{no:"33",ad:"Mersin"},{no:"34",ad:"İstanbul"},{no:"35",ad:"İzmir"},{no:"36",ad:"Kars"},{no:"37",ad:"Kastamonu"},{no:"38",ad:"Kayseri"},{no:"39",ad:"Kırklareli"},{no:"40",ad:"Kırşehir"},{no:"41",ad:"Kocaeli"},{no:"42",ad:"Konya"},{no:"43",ad:"Kütahya"},{no:"44",ad:"Malatya"},{no:"45",ad:"Manisa"},{no:"46",ad:"Kahramanmaraş"},{no:"47",ad:"Mardin"},{no:"48",ad:"Muğla"},{no:"49",ad:"Muş"},{no:"50",ad:"Nevşehir"},{no:"51",ad:"Niğde"},{no:"52",ad:"Ordu"},{no:"53",ad:"Rize"},{no:"54",ad:"Sakarya"},{no:"55",ad:"Samsun"},{no:"56",ad:"Siirt"},{no:"57",ad:"Sinop"},{no:"58",ad:"Sivas"},{no:"59",ad:"Tekirdağ"},{no:"60",ad:"Tokat"},{no:"61",ad:"Trabzon"},{no:"62",ad:"Tunceli"},{no:"63",ad:"Şanlıurfa"},{no:"64",ad:"Uşak"},{no:"65",ad:"Van"},{no:"66",ad:"Yozgat"},{no:"67",ad:"Zonguldak"},{no:"68",ad:"Aksaray"},{no:"69",ad:"Bayburt"},{no:"70",ad:"Karaman"},{no:"71",ad:"Kırıkkale"},{no:"72",ad:"Batman"},{no:"73",ad:"Şırnak"},{no:"74",ad:"Bartın"},{no:"75",ad:"Ardahan"},{no:"76",ad:"Iğdır"},{no:"77",ad:"Yalova"},{no:"78",ad:"Karabük"},{no:"79",ad:"Kilis"},{no:"80",ad:"Osmaniye"},{no:"81",ad:"Düzce"}];
-var SUBELER=[{id:"alsancak",ad:"İZMİR-ALSANCAK"},{id:"karsiyaka",ad:"İZMİR-KARŞIYAKA"},{id:"buca",ad:"İZMİR-BUCA"},{id:"gaziemir",ad:"İZMİR-GAZİEMİR"},{id:"tokat",ad:"TOKAT"},{id:"eryaman",ad:"ANKARA-ERYAMAN"},{id:"elvankent",ad:"ANKARA-ELVANKENT"}];
 
 // Harita verisini Firebase'den yükle
 function haritaLoad(){
-  if(!_fbReady||!_db)return;
+  if(!_fbReady||!_db){
+    var def={};
+    SUBELER.forEach(function(s){
+      def[s.id]={odulListesi:[200,300,400,500,600,700,800,900,1000,1500,2000,3000]};
+    });
+    _haritaCfg=def;
+    _haritaLoaded=true;
+    render();
+    return;
+  }
+
   _db.doc("harita/data").get().then(function(doc){
     if(doc.exists){
       _haritaData=doc.data().iller||{};
     }
-  });
-  _db.doc("harita/cfg").get().then(function(doc){
+    return _db.doc("harita/cfg").get();
+  }).then(function(doc){
     if(doc.exists){
       _haritaCfg=doc.data()||{};
     } else {
-      // Varsayılan config
       var def={};
       SUBELER.forEach(function(s){
         def[s.id]={odulListesi:[200,300,400,500,600,700,800,900,1000,1500,2000,3000]};
@@ -2233,7 +2242,16 @@ function haritaLoad(){
       _haritaCfg=def;
     }
     _haritaLoaded=true;
-    if(currentTab==="game")render();
+    render();
+  }).catch(function(e){
+    console.warn("Harita load hata:", e);
+    var def={};
+    SUBELER.forEach(function(s){
+      def[s.id]={odulListesi:[200,300,400,500,600,700,800,900,1000,1500,2000,3000]};
+    });
+    _haritaCfg=def;
+    _haritaLoaded=true;
+    render();
   });
 }
 
