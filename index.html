@@ -2734,11 +2734,6 @@ if(haritaSubeReset){
 }
 
 /* mevcut kodların burada devam edecek */
-document.querySelectorAll("[data-setsube]").forEach(function(btn){
-  btn.addEventListener("click", function(){
-    setSube(btn.dataset.setsube);
-  });
-});  
 document.querySelectorAll("[data-tab]").forEach(function(btn){  
 document.querySelectorAll("[data-tab]").forEach(function(btn){btn.addEventListener("click",function(){currentTab=btn.dataset.tab;render();if(currentTab==="crm")setTimeout(_bindDateBtns,100);});});
  document.querySelectorAll("[data-setgame]").forEach(function(btn){
