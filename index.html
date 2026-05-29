@@ -2444,8 +2444,40 @@ function haritaIlDetay(subeId,ilNo){
   showModal("🗺️",ilNo+" - "+(sehir?sehir.ad:""),"Personel: <strong>"+escH(d.personel)+"</strong><br>Ödül: <span style='color:#FFE000'>"+d.odul.toLocaleString("tr-TR")+"₺</span><br>Tarih: "+d.tarih,false);
 }
 // ══ HARITA OYUNU SON ══
-function buildAdmin(){
-  if(_currentGame==="harita") return buildHaritaAdmin();
+function buildHaritaAdmin(){
+  var subeOptions = SUBELER.map(function(s){
+    return '<option value="'+s.id+'" '+(_haritaSube===s.id?'selected':'')+'>'+s.ad+'</option>';
+  }).join("");
+
+  var cfg = _haritaCfg[_haritaSube] || {};
+  var oduller = cfg.odulListesi || [200,300,400,500,600,700,800,900,1000,1500,2000,3000];
+
+  return '<div style="padding:16px 12px;max-width:820px;margin:0 auto;">'
+    +'<div class="bb" style="font-size:1.6rem;color:#FFE000;margin-bottom:14px;">🗺️ Harita Ayarları</div>'
+
+    +'<div class="adm-card">'
+      +'<div class="adm-title">Şube Seç</div>'
+      +'<select id="haritaAdminSube" class="adm-input" style="width:100%;margin-bottom:10px;">'
+      +subeOptions
+      +'</select>'
+      +'<div class="info-box">Her şubenin haritası ayrı tutulur. Seçilen şubede açılan iller, ödül havuzu ve skorlar ayrı hesaplanır.</div>'
+    +'</div>'
+
+    +'<div class="adm-card">'
+      +'<div class="adm-title">Ödül Listesi</div>'
+      +'<textarea id="haritaOdulListesi" style="height:90px;">'+oduller.join(",")+'</textarea>'
+      +'<button id="haritaOdulKaydet" class="btn-gold" style="margin-top:10px;">Kaydet</button>'
+      +'<div class="info-box">Örnek: 200,300,500,1000,1500,2000</div>'
+    +'</div>'
+
+    +'<div class="adm-card">'
+      +'<div class="adm-title">Şube Haritasını Sıfırla</div>'
+      +'<button id="haritaSubeReset" class="btn-danger" style="border:1px solid rgba(192,57,43,.4);border-radius:5px;padding:9px 14px;">Bu Şubeyi Sıfırla</button>'
+    +'</div>'
+
+  +'</div>';
+}
+// if(_currentGame==="harita") return buildHaritaAdmin();
 var tp=cfg.prizes.reduce(function(s,p){return s+p.count;},0);
 var rem=gs.prizePool?gs.prizePool.length:0;
 var pMin=gs.prizePool&&gs.prizePool.length?Math.min.apply(null,gs.prizePool):'—';
