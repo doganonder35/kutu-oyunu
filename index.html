@@ -2632,17 +2632,6 @@ setTimeout(_bindDateBtns,50);
 document.querySelectorAll("[data-setgame]").forEach(function(btn){
   btn.addEventListener("click", function(){
     setGame(btn.dataset.setgame);
-  });
-});  
-document.querySelectorAll("[data-tab]").forEach(function(btn){
-  btn.addEventListener("click", function(){
-    currentTab = btn.dataset.tab;
-    render();
-    if(currentTab === "crm"){
-      setTimeout(_bindDateBtns,100);
-    }
-  });
-});  
 document.querySelectorAll("[data-filter]").forEach(function(btn){btn.addEventListener("click",function(){currentFilter=btn.dataset.filter;render();});});
 document.querySelectorAll(".box-card:not(.opened)").forEach(function(card){card.addEventListener("click",function(){openBox(parseInt(card.dataset.boxid));});});
 document.querySelectorAll(".box-card.reopenable").forEach(function(card){
