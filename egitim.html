@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Englishtime | Eğitim Raporu</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --navy:#12294f;
+  --navy-2:#1c3a6e;
+  --blue:#2c5cc5;
+  --blue-light:#e8eefb;
+  --amber:#e6a532;
+  --amber-light:#fdf1dd;
+  --green:#2f9e6a;
+  --green-light:#e5f6ee;
+  --red:#d1554a;
+  --red-light:#fbe9e7;
+  --ink:#1b2433;
+  --ink-soft:#5a6478;
+  --line:#e2e6ee;
+  --bg:#f4f6fb;
+  --card:#ffffff;
+  --radius:14px;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Arial,sans-serif;background:var(--bg);color:var(--ink);}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-thumb{background:#c7cfdf;border-radius:10px;}
+
+.app{display:flex;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{
+  width:250px;flex-shrink:0;background:linear-gradient(180deg,var(--navy),var(--navy-2));
+  color:#fff;padding:24px 16px;display:flex;flex-direction:column;gap:6px;position:sticky;top:0;height:100vh;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px 20px 8px;border-bottom:1px solid rgba(255,255,255,.12);margin-bottom:14px;}
+.brand-mark{width:38px;height:38px;border-radius:10px;background:var(--amber);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--navy);font-size:18px;}
+.brand-text b{display:block;font-size:15px;letter-spacing:.3px;}
+.brand-text span{display:block;font-size:11px;color:#b9c4de;}
+
+.nav-btn{
+  display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;color:#dbe3f5;
+  background:transparent;border:none;text-align:left;font-size:14px;cursor:pointer;width:100%;
+  transition:.15s;
+}
+.nav-btn:hover{background:rgba(255,255,255,.08);}
+.nav-btn.active{background:var(--amber);color:var(--navy);font-weight:700;}
+.nav-icon{font-size:16px;width:20px;text-align:center;}
+
+.sidebar-foot{margin-top:auto;padding:12px 8px 0 8px;border-top:1px solid rgba(255,255,255,.12);font-size:11px;color:#9fb0d3;line-height:1.6;}
+.sidebar-foot .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;}
+.dot.ok{background:#3ddc84;}
+.dot.warn{background:#f2b544;}
+
+/* MAIN */
+.content{flex:1;padding:26px 34px 60px 34px;max-width:1300px;}
+.page-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;flex-wrap:wrap;gap:12px;}
+.page-header h1{margin:0 0 4px 0;font-size:22px;color:var(--navy);}
+.page-header p{margin:0;color:var(--ink-soft);font-size:13.5px;}
+
+.banner{padding:12px 16px;border-radius:10px;font-size:13px;margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+.banner.warn{background:var(--amber-light);color:#8a5a00;border:1px solid #f0d190;}
+.banner.ok{background:var(--green-light);color:#1c6b45;border:1px solid #b7e3cb;}
+.banner.err{background:var(--red-light);color:#9c352b;border:1px solid #f0c1bb;}
+
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* SUMMARY CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:26px;}
+.stat-card{background:var(--card);border-radius:var(--radius);padding:18px 20px;box-shadow:0 1px 3px rgba(20,30,60,.06);border:1px solid var(--line);}
+.stat-card .label{font-size:12.5px;color:var(--ink-soft);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+.stat-card .value{font-size:30px;font-weight:800;color:var(--navy);}
+.stat-card.bekleyen{border-top:4px solid var(--amber);}
+.stat-card.aliyor{border-top:4px solid var(--blue);}
+.stat-card.alacak{border-top:4px solid #7a5cc5;}
+.stat-card.donduran{border-top:4px solid var(--red);}
+.stat-card.tamamlayan{border-top:4px solid var(--green);}
+
+.section-title{font-size:15px;font-weight:700;color:var(--navy);margin:26px 0 12px 0;display:flex;align-items:center;gap:8px;}
+
+.mini-bars{display:flex;flex-direction:column;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
+.mini-bar-row{display:flex;align-items:center;gap:10px;font-size:13px;}
+.mini-bar-row .name{width:150px;flex-shrink:0;color:var(--ink);font-weight:600;}
+.mini-bar-track{flex:1;background:#eef1f8;border-radius:6px;height:10px;overflow:hidden;}
+.mini-bar-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--navy));border-radius:6px;}
+.mini-bar-row .count{width:44px;text-align:right;color:var(--ink-soft);font-weight:700;}
+
+/* DRILLDOWN */
+.breadcrumb{display:flex;align-items:center;flex-wrap:wrap;gap:2px;margin-bottom:16px;font-size:13px;}
+.breadcrumb button{background:none;border:none;color:var(--blue);cursor:pointer;font-size:13px;padding:4px 6px;border-radius:6px;font-weight:600;}
+.breadcrumb button:hover{background:var(--blue-light);}
+.breadcrumb span{color:var(--ink-soft);}
+
+.card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;}
+.drill-card{
+  background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;cursor:pointer;
+  transition:.15s;box-shadow:0 1px 2px rgba(20,30,60,.04);
+}
+.drill-card:hover{border-color:var(--blue);transform:translateY(-2px);box-shadow:0 6px 14px rgba(44,92,197,.12);}
+.drill-card-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:8px;line-height:1.3;}
+.drill-card-count{font-size:22px;font-weight:800;color:var(--blue);}
+.drill-card-sub{font-size:11px;color:var(--ink-soft);margin-top:4px;}
+
+.record-table-wrap{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;}
+.record-table-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);background:#fafbfe;}
+.record-table-head h3{margin:0;font-size:15px;color:var(--navy);}
+.record-search{padding:8px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;width:220px;}
+table.rec-table{width:100%;border-collapse:collapse;font-size:13px;}
+table.rec-table th{text-align:left;padding:10px 16px;background:#f6f8fc;color:var(--ink-soft);font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;border-bottom:1px solid var(--line);}
+table.rec-table td{padding:10px 16px;border-bottom:1px solid #eef1f7;}
+table.rec-table tr:last-child td{border-bottom:none;}
+table.rec-table tr:hover td{background:#f7f9fd;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:700;}
+.badge.pasif{background:var(--red-light);color:#9c352b;}
+.empty-row{padding:30px;text-align:center;color:var(--ink-soft);font-size:13px;}
+
+/* subtabs (alacak/dondurulan) */
+.subtabs{display:flex;gap:8px;margin-bottom:16px;}
+.subtab-btn{padding:8px 16px;border-radius:20px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;}
+.subtab-btn.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+
+/* UPLOAD */
+.upload-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-bottom:20px;}
+.upload-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;}
+.upload-card h3{margin:0 0 4px 0;font-size:14.5px;color:var(--navy);}
+.upload-card p.hint{margin:0 0 14px 0;font-size:12px;color:var(--ink-soft);}
+.dropzone{
+  border:2px dashed var(--line);border-radius:10px;padding:22px 14px;text-align:center;cursor:pointer;
+  transition:.15s;font-size:13px;color:var(--ink-soft);background:#fafbfe;
+}
+.dropzone:hover{border-color:var(--blue);background:var(--blue-light);}
+.dropzone.filled{border-color:var(--green);background:var(--green-light);color:#1c6b45;font-weight:600;}
+.dropzone input{display:none;}
+.upload-status{margin-top:10px;font-size:12px;color:var(--ink-soft);}
+.btn{
+  background:var(--blue);color:#fff;border:none;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:700;
+  cursor:pointer;transition:.15s;
+}
+.btn:hover{background:var(--navy);}
+.btn:disabled{background:#b6c1d9;cursor:not-allowed;}
+.btn.secondary{background:#fff;color:var(--navy);border:1px solid var(--line);}
+.btn.secondary:hover{background:var(--blue-light);}
+
+.config-box{background:#fff8ea;border:1px solid #f0d190;border-radius:var(--radius);padding:18px 20px;margin-bottom:22px;font-size:13px;color:#6b4d00;line-height:1.6;}
+.config-box code{background:#fff;padding:1px 6px;border-radius:5px;border:1px solid #f0d190;}
+
+@media(max-width:900px){
+  .app{flex-direction:column;}
+  .sidebar{width:100%;height:auto;position:relative;flex-direction:row;flex-wrap:wrap;}
+  .content{padding:18px;}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">ET</div>
+      <div class="brand-text"><b>Englishtime</b><span>Eğitim Raporu</span></div>
+    </div>
+    <button class="nav-btn active" data-tab="ozet"><span class="nav-icon">📊</span> Özet</button>
+    <button class="nav-btn" data-tab="bekleyenler"><span class="nav-icon">⏳</span> Bekleyenler</button>
+    <button class="nav-btn" data-tab="aliyor"><span class="nav-icon">📚</span> Eğitim Alıyor</button>
+    <button class="nav-btn" data-tab="alacak"><span class="nav-icon">📅</span> Alacak / Dondurulan</button>
+    <button class="nav-btn" data-tab="tamamlayan"><span class="nav-icon">✅</span> Tamamlayanlar</button>
+    <button class="nav-btn" data-tab="yukle"><span class="nav-icon">📤</span> Veri Yükle</button>
+    <div class="sidebar-foot" id="sidebarFoot">
+      <div><span class="dot warn" id="connDot"></span><span id="connText">Bağlantı kontrol ediliyor…</span></div>
+      <div id="lastUpdateText" style="margin-top:6px;"></div>
+    </div>
+  </aside>
+
+  <main class="content">
+
+    <div id="firebaseBanner" class="banner warn" hidden></div>
+
+    <!-- ÖZET -->
+    <section class="tab-panel active" id="tab-ozet">
+      <div class="page-header">
+        <div><h1>Genel Özet</h1><p>Üç veri kaynağının birleşik durumu</p></div>
+      </div>
+      <div class="stat-grid" id="statGrid"></div>
+      <div class="section-title">🎯 Eğitim Türüne Göre Dağılım (Bekleyenler)</div>
+      <div class="mini-bars" id="miniBarsBekleyen"></div>
+      <div class="section-title">📚 Eğitim Türüne Göre Dağılım (Alıyor Olanlar)</div>
+      <div class="mini-bars" id="miniBarsAliyor"></div>
+    </section>
+
+    <!-- BEKLEYENLER -->
+    <section class="tab-panel" id="tab-bekleyenler">
+      <div class="page-header">
+        <div><h1>Bekleyenler</h1><p>Eğitim türü → Kur → Zaman kategorisi (H.İ.S, H.İ.Ö, H.İ.A, H.S.S, H.S.Ö, H.S.A, Boş Zaman) — saat bilgisi dikkate alınmaz</p></div>
+      </div>
+      <div id="drill-bekleyenler"></div>
+    </section>
+
+    <!-- ALIYOR -->
+    <section class="tab-panel" id="tab-aliyor">
+      <div class="page-header">
+        <div><h1>Eğitim Alıyor Olanlar</h1><p>Şu anda devam eden eğitimler — eğitim türü ve kur bazında</p></div>
+      </div>
+      <div id="drill-aliyor"></div>
+    </section>
+
+    <!-- ALACAK / DONDURULAN -->
+    <section class="tab-panel" id="tab-alacak">
+      <div class="page-header">
+        <div><h1>Alacak / Dondurulan Eğitimler</h1><p>Sıradaki eğitimler ve dondurulmuş kayıtlar</p></div>
+      </div>
+      <div class="subtabs">
+        <button class="subtab-btn active" data-sub="alacak">Alacağı Eğitimler</button>
+        <button class="subtab-btn" data-sub="dondurulan">Dondurulan Eğitimler</button>
+      </div>
+      <div id="drill-alacak"></div>
+      <div id="drill-dondurulan" style="display:none;"></div>
+    </section>
+
+    <!-- TAMAMLAYAN -->
+    <section class="tab-panel" id="tab-tamamlayan">
+      <div class="page-header">
+        <div><h1>Eğitimini Tamamlayanlar</h1><p>Bir kur seçtiğinizde, o kuru en son bitirenler en üstte listelenir</p></div>
+      </div>
+      <div id="drill-tamamlayan"></div>
+    </section>
+
+    <!-- YUKLE -->
+    <section class="tab-panel" id="tab-yukle">
+      <div class="page-header">
+        <div><h1>Veri Yükle</h1><p>Güncel Excel dosyalarını buraya yükleyin — kaydettiğinizde tüm cihazlarda otomatik güncellenir</p></div>
+      </div>
+
+      <div class="config-box" id="firebaseConfigNote"></div>
+
+      <div class="upload-grid">
+        <div class="upload-card">
+          <h3>⏳ Bekleyenler Listesi</h3>
+          <p class="hint">bekleyenler-listesi_ksk.xlsx</p>
+          <label class="dropzone" id="dz-bekleyenler">
+            <input type="file" accept=".xlsx,.xls" data-type="bekleyenler">
+            <div class="dz-label">Dosyayı seçmek için tıklayın</div>
+          </label>
+          <div class="upload-status" id="status-bekleyenler">Henüz dosya seçilmedi.</div>
+        </div>
+
+        <div class="upload-card">
+          <h3>📚 Kur Borçları</h3>
+          <p class="hint">kur-borclari_ksk.xlsx</p>
+          <label class="dropzone" id="dz-kurBorclari">
+            <input type="file" accept=".xlsx,.xls" data-type="kurBorclari">
+            <div class="dz-label">Dosyayı seçmek için tıklayın</div>
+          </label>
+          <div class="upload-status" id="status-kurBorclari">Henüz dosya seçilmedi.</div>
+        </div>
+
+        <div class="upload-card">
+          <h3>✅ Eğitimini Tamamlayanlar</h3>
+          <p class="hint">egitimini-tamamlayanlar_KSK.xlsx</p>
+          <label class="dropzone" id="dz-tamamlayanlar">
+            <input type="file" accept=".xlsx,.xls" data-type="tamamlayanlar">
+            <div class="dz-label">Dosyayı seçmek için tıklayın</div>
+          </label>
+          <div class="upload-status" id="status-tamamlayanlar">Henüz dosya seçilmedi.</div>
+        </div>
+      </div>
+
+      <button class="btn" id="saveBtn" disabled>Yüklenen Dosyaları Kaydet ve Yayınla</button>
+      <span id="saveResult" style="margin-left:14px;font-size:13px;color:var(--ink-soft);"></span>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* ============ FIREBASE CONFIG =============
+   Bu tool, kutu-oyunu / harita.html sayfalarınızla AYNI Firebase projesini kullanacak
+   şekilde tasarlandı. Aşağıya, o sayfalarda kullandığınız firebaseConfig nesnesini
+   AYNEN yapıştırın (apiKey, authDomain, projectId vb.). Yapıştırmazsanız bu sayfa
+   otomatik olarak tarayıcı içi (localStorage) modda çalışır — veriler sadece bu
+   cihazda/tarayıcıda saklanır, diğer cihazlarla senkronize olmaz.
+=========================================== */
+const firebaseConfig = {
+  apiKey: "BURAYA_YAPISTIR",
+  authDomain: "kutu-oyunu-8769b.firebaseapp.com",
+  projectId: "kutu-oyunu-8769b",
+  storageBucket: "kutu-oyunu-8769b.appspot.com",
+  messagingSenderId: "BURAYA_YAPISTIR",
+  appId: "BURAYA_YAPISTIR"
+};
+
+let db = null;
+let firebaseReady = false;
+try{
+  if(firebaseConfig.apiKey !== "BURAYA_YAPISTIR"){
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    firebaseReady = true;
+  }
+}catch(e){ console.error("Firebase başlatılamadı:", e); firebaseReady = false; }
+
+const COLLECTION = "egitimRaporu";
+
+/* ============ STATE ============ */
+let rawData = { bekleyenler: [], kurBorclari: [], tamamlayanlar: [] };
+let trees = { bekleyenler: {}, aliyor: {}, alacak: {}, dondurulan: {}, tamamlayan: {} };
+let pendingUpload = {};
+
+/* ============ UTIL ============ */
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function excelSerialToDate(serial){
+  const utcDays = Math.floor(serial - 25569);
+  const utcValue = utcDays * 86400;
+  return new Date(utcValue * 1000);
+}
+function parseAnyDate(v){
+  if(v==null || v==='') return null;
+  if(v instanceof Date) return v;
+  if(typeof v === 'number') return excelSerialToDate(v);
+  if(typeof v === 'string'){
+    const m = v.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    if(m) return new Date(+m[3], +m[2]-1, +m[1]);
+  }
+  return null;
+}
+function formatDateTR(v){
+  const d = parseAnyDate(v);
+  if(!d || isNaN(d.getTime())) return '—';
+  const dd=String(d.getDate()).padStart(2,'0');
+  const mm=String(d.getMonth()+1).padStart(2,'0');
+  return `${dd}.${mm}.${d.getFullYear()}`;
+}
+function fullName(ad, soyad){
+  return [ad,soyad].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
+}
+function titleCase(s){
+  return String(s||'').trim();
+}
+
+/* ============ PARSERS ============ */
+function parseCourseToken(token){
+  token = String(token||'').trim();
+  let pasif = false;
+  if(token.startsWith('[PASİF]')){ pasif = true; token = token.replace('[PASİF]','').trim(); }
+  const idx = token.indexOf('>');
+  if(idx === -1) return { tur: token || 'DİĞER', kur: 'GENEL', pasif };
+  const tur = token.slice(0, idx).trim();
+  const kur = token.slice(idx+1).trim();
+  return { tur: tur || 'DİĞER', kur: kur || 'GENEL', pasif };
+}
+
+const ZAMAN_KODLARI = ['H.İ.S','H.İ.Ö','H.İ.A','H.S.S','H.S.Ö','H.S.A'];
+function parseBekleyenSatiri(raw){
+  const parts = String(raw||'').split('>');
+  const tur = (parts[0]||'DİĞER').trim();
+  const kur = (parts[1]||'GENEL').trim();
+  const zamanRaw = (parts[2]||'').trim();
+  const pasif = zamanRaw.toUpperCase().indexOf('PASİF') !== -1 || zamanRaw.toUpperCase().indexOf('PASIF') !== -1;
+  let kategori = null;
+  for(const c of ZAMAN_KODLARI){
+    if(zamanRaw.indexOf(c) !== -1){ kategori = c; break; }
+  }
+  if(!kategori){
+    if(zamanRaw.toUpperCase().indexOf('BOŞ ZAMAN') !== -1) kategori = 'BOŞ ZAMAN';
+    else kategori = 'DİĞER';
+  }
+  return { tur, kur, kategori, pasif };
+}
+
+/* ============ TREE BUILDERS ============ */
+function ensurePath(tree, keys){
+  let node = tree;
+  for(let i=0;i<keys.length-1;i++){
+    if(!node[keys[i]]) node[keys[i]] = {};
+    node = node[keys[i]];
+  }
+  const lastKey = keys[keys.length-1];
+  if(!node[lastKey]) node[lastKey] = [];
+  return node[lastKey];
+}
+
+function buildBekleyenlerTree(rows){
+  const tree = {};
+  rows.forEach(r=>{
+    const name = r['Adı Soyadı'];
+    const prog = r['Program>Zaman'];
+    if(!name || !prog) return;
+    if(String(prog).indexOf('Program>Zaman:') === 0) return;
+    const {tur, kur, kategori, pasif} = parseBekleyenSatiri(prog);
+    const arr = ensurePath(tree, [tur, kur, kategori]);
+    arr.push({
+      ad: name, tel: r['Telefon']||'', tel2: r['Telefon 2']||'',
+      email: r['Email']||'', tarih: r['Bekleme Tarihi'], pasif
+    });
+  });
+  return tree;
+}
+
+function buildKursGrupTree(rows, columnName){
+  const tree = {};
+  rows.forEach(r=>{
+    const val = r[columnName];
+    if(!val) return;
+    const ad = r['Ad'], soyad = r['Soyad'];
+    if(!ad && !soyad) return;
+    const seen = new Set();
+    String(val).split(',').forEach(tok=>{
+      tok = tok.trim();
+      if(!tok) return;
+      const {tur, kur} = parseCourseToken(tok);
+      const key = tur+'|'+kur;
+      if(seen.has(key)) return;
+      seen.add(key);
+      const arr = ensurePath(tree, [tur, kur]);
+      arr.push({
+        ad: fullName(ad, soyad), sube: r['Şube']||'', no: r['Öğrenci No']||'',
+        kayit: r['Kayıt Tarihi']
+      });
+    });
+  });
+  return tree;
+}
+
+function buildTamamlayanTree(rows){
+  const tree = {};
+  rows.forEach(r=>{
+    const val = r['Kur Adı'];
+    if(!val) return;
+    const ad = r['Ad'], soyad = r['Soyad'];
+    if(!ad && !soyad) return;
+    const seen = new Set();
+    String(val).split(',').forEach(tok=>{
+      tok = tok.trim();
+      if(!tok) return;
+      const {tur, kur} = parseCourseToken(tok);
+      const key = tur+'|'+kur;
+      if(seen.has(key)) return;
+      seen.add(key);
+      const arr = ensurePath(tree, [tur, kur]);
+      arr.push({
+        ad: fullName(ad, soyad), sube: r['Şube']||'', bitis: r['Bitiş Tarihi'],
+        kayit: r['Kayıt Tarihi'], sozNo: r['Söz.No']||'', tel: r['Telefon 1']||''
+      });
+    });
+  });
+  return tree;
+}
+
+function rebuildTrees(){
+  trees.bekleyenler = buildBekleyenlerTree(rawData.bekleyenler);
+  trees.aliyor = buildKursGrupTree(rawData.kurBorclari, 'Alıyor Olduğu Eğitimler');
+  trees.alacak = buildKursGrupTree(rawData.kurBorclari, 'Alacağı Eğitimler');
+  trees.dondurulan = buildKursGrupTree(rawData.kurBorclari, 'Dondurulan Eğitimler');
+  trees.tamamlayan = buildTamamlayanTree(rawData.tamamlayanlar);
+}
+
+function countLeaves(node){
+  if(Array.isArray(node)) return node.length;
+  return Object.values(node).reduce((s,v)=> s + countLeaves(v), 0);
+}
+
+/* ============ DRILLDOWN RENDERER ============ */
+function renderDrilldown(containerEl, tree, recordRenderer, rootLabel){
+  function show(node, path){
+    containerEl.innerHTML = '';
+    const bc = document.createElement('div'); bc.className = 'breadcrumb';
+    const rootBtn = document.createElement('button');
+    rootBtn.textContent = '🏠 ' + rootLabel;
+    rootBtn.onclick = () => show(tree, []);
+    bc.appendChild(rootBtn);
+    path.forEach((seg,i)=>{
+      const sep = document.createElement('span'); sep.textContent = ' › ';
+      bc.appendChild(sep);
+      const btn = document.createElement('button');
+      btn.textContent = seg;
+      btn.onclick = () => {
+        let n = tree;
+        for(let j=0;j<=i;j++) n = n[path[j]];
+        show(n, path.slice(0,i+1));
+      };
+      bc.appendChild(btn);
+    });
+    containerEl.appendChild(bc);
+
+    if(Array.isArray(node)){
+      containerEl.appendChild(recordRenderer(node, path));
+    } else {
+      const grid = document.createElement('div'); grid.className = 'card-grid';
+      const entries = Object.entries(node).sort((a,b)=> countLeaves(b[1]) - countLeaves(a[1]));
+      if(entries.length === 0){
+        const empty = document.createElement('div'); empty.className='empty-row'; empty.textContent = 'Kayıt bulunamadı.';
+        containerEl.appendChild(empty);
+        return;
+      }
+      entries.forEach(([key,val])=>{
+        const count = countLeaves(val);
+        const card = document.createElement('div'); card.className = 'drill-card';
+        card.innerHTML = `<div class="drill-card-title">${escapeHtml(key)}</div><div class="drill-card-count">${count}</div><div class="drill-card-sub">kişi</div>`;
+        card.onclick = () => show(val, [...path, key]);
+        grid.appendChild(card);
+      });
+      containerEl.appendChild(grid);
+    }
+  }
+  show(tree, []);
+}
+
+/* record renderers */
+function makeSimpleTable(records, path, columns){
+  const wrap = document.createElement('div'); wrap.className = 'record-table-wrap';
+  const head = document.createElement('div'); head.className = 'record-table-head';
+  head.innerHTML = `<h3>${escapeHtml(path.join(' › '))} — ${records.length} kişi</h3>`;
+  const search = document.createElement('input');
+  search.className = 'record-search'; search.placeholder = 'İsimde ara…';
+  head.appendChild(search);
+  wrap.appendChild(head);
+
+  const tableBox = document.createElement('div');
+  wrap.appendChild(tableBox);
+
+  function draw(filterText){
+    const filtered = filterText
+      ? records.filter(r => (r.ad||'').toLocaleUpperCase('tr').indexOf(filterText.toLocaleUpperCase('tr')) !== -1)
+      : records;
+    if(filtered.length === 0){
+      tableBox.innerHTML = '<div class="empty-row">Sonuç bulunamadı.</div>';
+      return;
+    }
+    let html = '<table class="rec-table"><thead><tr>';
+    columns.forEach(c=> html += `<th>${c.label}</th>`);
+    html += '</tr></thead><tbody>';
+    filtered.forEach(r=>{
+      html += '<tr>';
+      columns.forEach(c=> html += `<td>${c.render(r)}</td>`);
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    tableBox.innerHTML = html;
+  }
+  search.addEventListener('input', ()=> draw(search.value));
+  draw('');
+  return wrap;
+}
+
+function bekleyenRecordRenderer(records, path){
+  const sorted = [...records].sort((a,b)=> (a.ad||'').localeCompare(b.ad||'','tr'));
+  return makeSimpleTable(sorted, path, [
+    { label:'Ad Soyad', render:r => escapeHtml(r.ad) + (r.pasif ? ' <span class="badge pasif">PASİF</span>' : '') },
+    { label:'Telefon', render:r => escapeHtml(r.tel || r.tel2 || '—') },
+    { label:'E-posta', render:r => escapeHtml(r.email || '—') },
+    { label:'Bekleme Tarihi', render:r => formatDateTR(r.tarih) },
+  ]);
+}
+function kursGrupRecordRenderer(records, path){
+  const sorted = [...records].sort((a,b)=> (a.ad||'').localeCompare(b.ad||'','tr'));
+  return makeSimpleTable(sorted, path, [
+    { label:'Ad Soyad', render:r => escapeHtml(r.ad) },
+    { label:'Şube', render:r => escapeHtml(r.sube || '—') },
+    { label:'Öğrenci No', render:r => escapeHtml(r.no || '—') },
+    { label:'Kayıt Tarihi', render:r => formatDateTR(r.kayit) },
+  ]);
+}
+function tamamlayanRecordRenderer(records, path){
+  const sorted = [...records].sort((a,b)=>{
+    const da = parseAnyDate(a.bitis), db_ = parseAnyDate(b.bitis);
+    if(!da && !db_) return 0;
+    if(!da) return 1;
+    if(!db_) return -1;
+    return db_ - da; // en son biten en üstte
+  });
+  return makeSimpleTable(sorted, path, [
+    { label:'Ad Soyad', render:r => escapeHtml(r.ad) },
+    { label:'Şube', render:r => escapeHtml(r.sube || '—') },
+    { label:'Bitiş Tarihi', render:r => formatDateTR(r.bitis) },
+    { label:'Kayıt Tarihi', render:r => formatDateTR(r.kayit) },
+    { label:'Sözleşme No', render:r => escapeHtml(r.sozNo || '—') },
+  ]);
+}
+
+/* ============ RENDER ALL ============ */
+function renderAll(){
+  renderOzet();
+  renderDrilldown(document.getElementById('drill-bekleyenler'), trees.bekleyenler, bekleyenRecordRenderer, 'Tüm Bekleyenler');
+  renderDrilldown(document.getElementById('drill-aliyor'), trees.aliyor, kursGrupRecordRenderer, 'Tüm Eğitim Alanlar');
+  renderDrilldown(document.getElementById('drill-alacak'), trees.alacak, kursGrupRecordRenderer, 'Tüm Alacaklar');
+  renderDrilldown(document.getElementById('drill-dondurulan'), trees.dondurulan, kursGrupRecordRenderer, 'Tüm Dondurulanlar');
+  renderDrilldown(document.getElementById('drill-tamamlayan'), trees.tamamlayan, tamamlayanRecordRenderer, 'Tüm Tamamlayanlar');
+}
+
+function renderOzet(){
+  const totalBekleyen = countLeaves(trees.bekleyenler);
+  const totalAliyor = countLeaves(trees.aliyor);
+  const totalAlacak = countLeaves(trees.alacak);
+  const totalDondurulan = countLeaves(trees.dondurulan);
+  const totalTamamlayan = countLeaves(trees.tamamlayan);
+
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat-card bekleyen"><div class="label">Bekleyen</div><div class="value">${totalBekleyen}</div></div>
+    <div class="stat-card aliyor"><div class="label">Eğitim Alıyor</div><div class="value">${totalAliyor}</div></div>
+    <div class="stat-card alacak"><div class="label">Alacak</div><div class="value">${totalAlacak}</div></div>
+    <div class="stat-card donduran"><div class="label">Dondurulan</div><div class="value">${totalDondurulan}</div></div>
+    <div class="stat-card tamamlayan"><div class="label">Tamamlayan</div><div class="value">${totalTamamlayan}</div></div>
+  `;
+
+  renderMiniBars('miniBarsBekleyen', trees.bekleyenler);
+  renderMiniBars('miniBarsAliyor', trees.aliyor);
+}
+
+function renderMiniBars(elId, tree){
+  const el = document.getElementById(elId);
+  const entries = Object.entries(tree).map(([k,v])=>[k, countLeaves(v)]).sort((a,b)=> b[1]-a[1]);
+  if(entries.length === 0){ el.innerHTML = '<div class="empty-row">Veri yok.</div>'; return; }
+  const max = Math.max(...entries.map(e=>e[1]), 1);
+  el.innerHTML = entries.map(([name,count])=>`
+    <div class="mini-bar-row">
+      <div class="name">${escapeHtml(name)}</div>
+      <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${(count/max*100).toFixed(1)}%"></div></div>
+      <div class="count">${count}</div>
+    </div>
+  `).join('');
+}
+
+/* ============ TAB NAV ============ */
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+document.querySelectorAll('.subtab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.subtab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('drill-alacak').style.display = btn.dataset.sub === 'alacak' ? 'block' : 'none';
+    document.getElementById('drill-dondurulan').style.display = btn.dataset.sub === 'dondurulan' ? 'block' : 'none';
+  });
+});
+
+/* ============ UPLOAD HANDLING ============ */
+document.querySelectorAll('.dropzone input[type=file]').forEach(input=>{
+  input.addEventListener('change', (e)=>{
+    const type = input.dataset.type;
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev)=>{
+      try{
+        const wb = XLSX.read(ev.target.result, { type:'array', cellDates:true });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
+        pendingUpload[type] = rows;
+        document.getElementById('status-'+type).textContent = `✅ ${file.name} — ${rows.length} satır okundu.`;
+        document.getElementById('dz-'+type).classList.add('filled');
+        document.getElementById('saveBtn').disabled = Object.keys(pendingUpload).length === 0;
+      }catch(err){
+        console.error(err);
+        document.getElementById('status-'+type).textContent = '❌ Dosya okunamadı: ' + err.message;
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+});
+
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('saveBtn');
+  const resultEl = document.getElementById('saveResult');
+  btn.disabled = true;
+  btn.textContent = 'Kaydediliyor…';
+  try{
+    for(const type of Object.keys(pendingUpload)){
+      rawData[type] = pendingUpload[type];
+      localStorage.setItem('egitim_'+type, JSON.stringify(pendingUpload[type]));
+      localStorage.setItem('egitim_meta_'+type, new Date().toISOString());
+      if(firebaseReady){
+        await saveToFirestoreChunks(type, pendingUpload[type]);
+        await db.collection(COLLECTION).doc('meta').set({
+          [type+'SonYukleme']: firebase.firestore.FieldValue.serverTimestamp(),
+          [type+'Sayisi']: pendingUpload[type].length
+        }, { merge:true });
+      }
+    }
+    pendingUpload = {};
+    rebuildTrees();
+    renderAll();
+    updateLastUpdateText();
+    resultEl.textContent = '✅ Kaydedildi ve yayınlandı — ' + new Date().toLocaleTimeString('tr-TR');
+    resultEl.style.color = 'var(--green)';
+    document.querySelectorAll('.dropzone').forEach(dz=>{
+      dz.classList.remove('filled');
+      dz.querySelector('input').value = '';
+    });
+    document.querySelectorAll('.upload-status').forEach(s=> s.textContent = 'Henüz dosya seçilmedi.');
+  }catch(err){
+    console.error(err);
+    resultEl.textContent = '❌ Kaydedilirken hata oluştu: ' + err.message;
+    resultEl.style.color = 'var(--red)';
+  }
+  btn.textContent = 'Yüklenen Dosyaları Kaydet ve Yayınla';
+  btn.disabled = Object.keys(pendingUpload).length === 0;
+});
+
+/* ============ FIRESTORE I/O ============ */
+async function saveToFirestoreChunks(type, rows){
+  const colRef = db.collection(COLLECTION).doc(type).collection('chunks');
+  const existing = await colRef.get();
+  if(!existing.empty){
+    const batchDel = db.batch();
+    existing.forEach(d=> batchDel.delete(d.ref));
+    await batchDel.commit();
+  }
+  const chunkSize = 300;
+  for(let i=0; i<rows.length; i+=chunkSize){
+    const chunk = rows.slice(i, i+chunkSize);
+    await colRef.doc('c'+Math.floor(i/chunkSize)).set({ data: JSON.stringify(chunk) });
+  }
+}
+async function loadFromFirestoreChunks(type){
+  const snap = await db.collection(COLLECTION).doc(type).collection('chunks').get();
+  let rows = [];
+  snap.forEach(d=>{
+    try{ rows = rows.concat(JSON.parse(d.data().data)); }catch(e){}
+  });
+  return rows;
+}
+
+/* ============ INITIAL LOAD ============ */
+function loadFromLocalStorage(){
+  ['bekleyenler','kurBorclari','tamamlayanlar'].forEach(type=>{
+    const local = localStorage.getItem('egitim_'+type);
+    if(local){
+      try{ rawData[type] = JSON.parse(local); }catch(e){}
+    }
+  });
+}
+
+function updateLastUpdateText(){
+  const el = document.getElementById('lastUpdateText');
+  const parts = [];
+  ['bekleyenler','kurBorclari','tamamlayanlar'].forEach(type=>{
+    const t = localStorage.getItem('egitim_meta_'+type);
+    if(t){
+      const d = new Date(t);
+      parts.push(`${labelFor(type)}: ${d.toLocaleDateString('tr-TR')} ${d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'})}`);
+    }
+  });
+  el.innerHTML = parts.length ? parts.map(p=>`<div>${p}</div>`).join('') : 'Henüz veri yüklenmedi.';
+}
+function labelFor(type){
+  return { bekleyenler:'Bekleyenler', kurBorclari:'Kur Borçları', tamamlayanlar:'Tamamlayanlar' }[type] || type;
+}
+
+async function init(){
+  const connDot = document.getElementById('connDot');
+  const connText = document.getElementById('connText');
+  const banner = document.getElementById('firebaseBanner');
+  const configNote = document.getElementById('firebaseConfigNote');
+
+  if(!firebaseReady){
+    connDot.className = 'dot warn';
+    connText.textContent = 'Yerel mod (Firebase yok)';
+    banner.hidden = false;
+    banner.className = 'banner warn';
+    banner.innerHTML = '⚠️ Firebase yapılandırması eklenmemiş — veriler şu an sadece bu tarayıcıda saklanıyor. Kalıcı ve tüm cihazlarda senkron olması için sayfanın kaynağındaki <code>firebaseConfig</code> alanına, kutu oyunu / harita.html sayfalarınızda kullandığınız Firebase bilgilerini yapıştırın.';
+    configNote.innerHTML = '⚠️ <b>Firebase bağlı değil.</b> Bu sayfanın HTML kaynağında <code>firebaseConfig</code> bölümünü, mevcut kutu-oyunu / harita.html sayfalarınızdaki bilgilerle doldurun (apiKey, messagingSenderId, appId). Doldurana kadar veriler sadece bu tarayıcıda saklanır.';
+    loadFromLocalStorage();
+  }else{
+    try{
+      const metaSnap = await db.collection(COLLECTION).doc('meta').get();
+      for(const type of ['bekleyenler','kurBorclari','tamamlayanlar']){
+        const rows = await loadFromFirestoreChunks(type);
+        if(rows.length){
+          rawData[type] = rows;
+          localStorage.setItem('egitim_'+type, JSON.stringify(rows));
+        }else{
+          const local = localStorage.getItem('egitim_'+type);
+          if(local) rawData[type] = JSON.parse(local);
+        }
+      }
+      connDot.className = 'dot ok';
+      connText.textContent = 'Firebase bağlı';
+      banner.hidden = true;
+      configNote.innerHTML = '✅ Firebase bağlı. Yüklediğiniz dosyalar tüm cihazlarda otomatik güncellenecek.';
+      // sync last-update timestamps from Firestore meta into localStorage display
+      if(metaSnap.exists){
+        const meta = metaSnap.data();
+        ['bekleyenler','kurBorclari','tamamlayanlar'].forEach(type=>{
+          const ts = meta[type+'SonYukleme'];
+          if(ts && ts.toDate) localStorage.setItem('egitim_meta_'+type, ts.toDate().toISOString());
+        });
+      }
+    }catch(err){
+      console.error(err);
+      connDot.className = 'dot warn';
+      connText.textContent = 'Firebase hatası — yerel mod';
+      banner.hidden = false;
+      banner.className = 'banner err';
+      banner.textContent = '⚠️ Firebase\'e bağlanılamadı, yerel veriler kullanılıyor: ' + err.message;
+      configNote.textContent = 'Firebase bağlantı hatası oluştu, veriler bu tarayıcıda yerel olarak saklanıyor.';
+      loadFromLocalStorage();
+    }
+  }
+
+  rebuildTrees();
+  renderAll();
+  updateLastUpdateText();
+}
+
+init();
+</script>
+</body>
+</html>
