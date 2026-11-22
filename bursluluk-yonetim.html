@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Bursluluk Sınavı | Yönetim</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{--navy:#14254a;--red:#d6222a;--ink:#1d2433;--muted:#6b7385;--line:#e1e5ec;--bg:#f4f6f9;--ok:#1f8a4c;--wa:#25d366}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
+  header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header h1{font-size:17px;margin:0;font-weight:700}
+  header .sp{flex:1}
+  header button{background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer}
+  nav{display:flex;gap:4px;padding:0 20px;background:#fff;border-bottom:1px solid var(--line)}
+  nav button{border:none;background:none;padding:12px 14px;font-size:14px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;font-weight:600}
+  nav button.on{color:var(--navy);border-bottom-color:var(--red)}
+  main{padding:16px 20px}
+  .tab{display:none}.tab.on{display:block}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  input,select,textarea{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+  button.b{font:inherit;padding:8px 13px;border-radius:8px;border:1px solid var(--navy);background:var(--navy);color:#fff;cursor:pointer;font-weight:600}
+  button.b.ghost{background:#fff;color:var(--navy)}
+  button.b.red{background:var(--red);border-color:var(--red)}
+  button.b:disabled{opacity:.5;cursor:not-allowed}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 14px;min-width:110px}
+  .stat b{display:block;font-size:20px;color:var(--navy)}
+  .stat span{color:var(--muted);font-size:12px}
+  .tblwrap{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px;max-height:calc(100vh - 300px)}
+  table{border-collapse:collapse;width:100%;min-width:1100px}
+  th,td{padding:8px 9px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;white-space:nowrap}
+  th{position:sticky;top:0;background:#f8f9fb;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.02em;z-index:1}
+  tr.arandi td{background:#f1faf4}
+  td.not input{width:200px}
+  .wa{background:var(--wa);color:#fff;border:none;border-radius:7px;padding:5px 9px;cursor:pointer;font-weight:600}
+  .wa.sent{background:#d9f5e3;color:#16723c}
+  .del{background:none;border:none;color:#b3261e;cursor:pointer;font-size:16px}
+  .muted{color:var(--muted)}
+  .tag{display:inline-block;background:#fff4e5;color:#8a5300;border-radius:6px;padding:1px 6px;font-size:11px;margin-left:4px}
+  #login{max-width:360px;margin:12vh auto;background:#fff;border:1px solid var(--line);border-radius:14px;padding:26px}
+  #login h2{margin:0 0 16px;color:var(--navy)}
+  #login input{width:100%;margin-bottom:10px;padding:10px}
+  #login button{width:100%}
+  .msg{margin-top:10px;font-size:13px}
+  .msg.err{color:#b3261e}.msg.ok{color:var(--ok)}
+  .grid-ilce{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;margin-top:10px}
+  .grid-ilce div{background:#f8f9fb;border:1px solid var(--line);border-radius:8px;padding:6px 9px;display:flex;justify-content:space-between}
+  #sinavTbl td input[type=text]{width:120px}
+</style>
+</head>
+<body>
+
+<div id="login" style="display:none">
+  <h2>Bursluluk Yönetim</h2>
+  <input type="email" id="lEmail" placeholder="E-posta" autocomplete="username">
+  <input type="password" id="lPass" placeholder="Şifre" autocomplete="current-password">
+  <button class="b" id="lBtn">Giriş yap</button>
+  <div class="msg err" id="lMsg"></div>
+</div>
+
+<div id="app" style="display:none">
+  <header>
+    <h1>Bursluluk Sınavı · Yönetim</h1>
+    <span class="sp"></span>
+    <span id="who" class="muted" style="color:#c9d2e6"></span>
+    <button id="cikis">Çıkış</button>
+  </header>
+  <nav>
+    <button data-t="basvuru" class="on">Başvurular</button>
+    <button data-t="sinav">Sınav Tarihleri</button>
+    <button data-t="okul">Okul Listesi</button>
+  </nav>
+  <main>
+    <!-- BAŞVURULAR -->
+    <section class="tab on" id="t-basvuru">
+      <div class="bar">
+        <input id="fAra" placeholder="İsim / telefon / okul ara" style="min-width:220px">
+        <select id="fSube"><option value="">Tüm şubeler</option></select>
+        <select id="fSinif"><option value="">Tüm sınıflar</option></select>
+        <select id="fSinav"><option value="">Tüm sınav tarihleri</option></select>
+        <select id="fArandi"><option value="">Arama durumu: hepsi</option><option value="0">Aranmadı</option><option value="1">Arandı</option></select>
+        <span class="sp" style="flex:1"></span>
+        <button class="b" id="excel">Excel'e aktar</button>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="tblwrap">
+        <table>
+          <thead><tr>
+            <th>Tarih</th><th>Öğrenci</th><th>Veli</th><th>Telefon</th><th>İlçe</th><th>Okul</th><th>Sınıf</th><th>Sınav</th><th>Şube</th><th>Arandı</th><th>WhatsApp</th><th>Not</th><th></th>
+          </tr></thead>
+          <tbody id="tb"><tr><td colspan="13" class="muted">Yükleniyor…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SINAV TARİHLERİ -->
+    <section class="tab" id="t-sinav">
+      <div class="card">
+        <p class="muted" style="margin-top:0">Her satır bir sınav oturumudur. "Sınıflar" alanına o oturuma girecek sınıfları virgülle yazın (örn. <b>5,6</b>). Pasif yaptığınız oturum formda görünmez.</p>
+        <table id="sinavTbl" style="min-width:0">
+          <thead><tr><th>Sınıflar</th><th>Tarih</th><th>Saat</th><th>Açıklama (isteğe bağlı)</th><th>Aktif</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="bar" style="margin-top:12px">
+          <button class="b ghost" id="sinavEkle">+ Oturum ekle</button>
+          <button class="b" id="sinavKaydet">Kaydet</button>
+          <span class="msg" id="sinavMsg"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- OKUL LİSTESİ -->
+    <section class="tab" id="t-okul">
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--navy)">Excel'den toplu yükle</h3>
+        <p class="muted">Excel'de 3 sütun olmalı: <b>İlçe</b>, <b>Kademe</b> (İlkokul / Ortaokul / Lise), <b>Okul Adı</b>. Yüklenen dosyadaki ilçelerin listesi <b>tamamen yenilenir</b>; dosyada olmayan ilçelere dokunulmaz.</p>
+        <div class="bar">
+          <input type="file" id="okulDosya" accept=".xlsx,.xls,.csv">
+          <button class="b ghost" id="sablon">Boş şablon indir</button>
+          <button class="b" id="okulYukle" disabled>Yükle</button>
+          <span class="msg" id="okulMsg"></span>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--navy)">Tek okul ekle</h3>
+        <div class="bar">
+          <select id="tIlce"></select>
+          <select id="tKademe"><option>İlkokul</option><option>Ortaokul</option><option>Lise</option></select>
+          <input id="tOkul" placeholder="Okul adı" style="min-width:260px">
+          <button class="b" id="tEkle">Ekle</button>
+          <span class="msg" id="tMsg"></span>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--navy)">İlçelere göre okul sayısı</h3>
+        <div class="grid-ilce" id="ilceSay"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyAk2oK4iQPQFIF5Z-aUCNTBfjP9NyP-GBQ",
+  authDomain: "kutu-oyunu-8769b.firebaseapp.com",
+  projectId: "kutu-oyunu-8769b",
+  storageBucket: "kutu-oyunu-8769b.firebasestorage.app",
+  messagingSenderId: "510806255308",
+  appId: "1:510806255308:web:f49187078c25cac8fec469"
+});
+const db = firebase.firestore(), auth = firebase.auth();
+const COL_BASVURU='bursluluk_basvurular', COL_OKUL='bursluluk_okullar', DOC_SINAV='bursluluk_ayar/sinavlar';
+const ILCELER=['Aliağa','Balçova','Bayındır','Bayraklı','Bergama','Beydağ','Bornova','Buca','Çeşme','Çiğli','Dikili','Foça','Gaziemir','Güzelbahçe','Karabağlar','Karaburun','Karşıyaka','Kemalpaşa','Kınık','Kiraz','Konak','Menderes','Menemen','Narlıdere','Ödemiş','Seferihisar','Selçuk','Tire','Torbalı','Urla'];
+const SUBELER=['Alsancak','Karşıyaka','Buca','Gaziemir'];
+const WA_MESAJ="Englishtime Yabancı Dil Kursu'na hoş geldiniz. Bursluluk sınavı için başvurunuz alınmış olup danışman arkadaşlarımız en kısa sürede sizinle iletişime geçecektir.";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const trLow=s=>String(s||'').toLocaleLowerCase('tr-TR');
+function trTarih(iso){const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?`${m[3]}.${m[2]}.${m[1]}`:(iso||'');}
+function zamanYaz(ts){ if(!ts||!ts.toDate) return ''; const d=ts.toDate(); const p=n=>String(n).padStart(2,'0'); return `${p(d.getDate())}.${p(d.getMonth()+1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+
+/* ---------- giriş ---------- */
+auth.onAuthStateChanged(u=>{
+  $('login').style.display = u ? 'none':'block';
+  $('app').style.display = u ? 'block':'none';
+  if(u){ $('who').textContent=u.email||''; basla(); }
+});
+async function girisYap(){
+  $('lMsg').textContent='';
+  try{ await auth.signInWithEmailAndPassword($('lEmail').value.trim(), $('lPass').value); }
+  catch(e){
+    $('lMsg').textContent = e.code==='auth/configuration-not-found' || e.code==='auth/operation-not-allowed'
+      ? 'Firebase\'de E-posta/Şifre girişi henüz açılmamış.'
+      : 'E-posta veya şifre hatalı.';
+  }
+}
+$('lBtn').onclick=girisYap;
+$('lPass').addEventListener('keydown',e=>{ if(e.key==='Enter') girisYap(); });
+$('cikis').onclick=()=>auth.signOut();
+
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.id==='t-'+b.dataset.t));
+});
+
+let basladi=false;
+function basla(){
+  if(basladi) return; basladi=true;
+  SUBELER.forEach(s=>$('fSube').add(new Option(s,s)));
+  for(let i=1;i<=12;i++) $('fSinif').add(new Option(i+'. Sınıf',String(i)));
+  ILCELER.forEach(i=>$('tIlce').add(new Option(i,i)));
+  dinleBasvurular(); yukleSinavlar(); yukleOkulSayilari();
+}
+
+/* ---------- BAŞVURULAR ---------- */
+let KAYITLAR=[];
+function dinleBasvurular(){
+  db.collection(COL_BASVURU).orderBy('zaman','desc').onSnapshot(snap=>{
+    KAYITLAR = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    // sınav tarihi filtresi
+    const cur=$('fSinav').value; const set=[...new Set(KAYITLAR.map(k=>k.sinavTarihi+'|'+(k.sinavSaati||'')))].sort();
+    $('fSinav').innerHTML='<option value="">Tüm sınav tarihleri</option>'+set.map(v=>{const[t,s]=v.split('|');return `<option value="${esc(v)}">${trTarih(t)} ${esc(s)}</option>`}).join('');
+    $('fSinav').value=cur;
+    ciz();
+  }, err=>{
+    $('tb').innerHTML=`<tr><td colspan="13" style="color:#b3261e">Veriler okunamadı (${esc(err.code)}). Firestore kurallarını kontrol edin.</td></tr>`;
+  });
+}
+function filtreli(){
+  const q=trLow($('fAra').value.trim()), sube=$('fSube').value, sinif=$('fSinif').value, sinav=$('fSinav').value, ar=$('fArandi').value;
+  return KAYITLAR.filter(k=>{
+    if(sube && k.sube!==sube) return false;
+    if(sinif && String(k.sinif)!==sinif) return false;
+    if(sinav && (k.sinavTarihi+'|'+(k.sinavSaati||''))!==sinav) return false;
+    if(ar==='1' && !k.arandi) return false;
+    if(ar==='0' && k.arandi) return false;
+    if(q){ const h=trLow([k.ogrenci,k.veli,k.telefon,k.okul,k.ilce].join(' ')); if(!h.includes(q)) return false; }
+    return true;
+  });
+}
+function ciz(){
+  const L=filtreli();
+  const tbody=$('tb');
+  if(!L.length){ tbody.innerHTML='<tr><td colspan="13" class="muted">Kayıt yok.</td></tr>'; }
+  else tbody.innerHTML=L.map(k=>`
+    <tr data-id="${esc(k.id)}" class="${k.arandi?'arandi':''}">
+      <td>${zamanYaz(k.zaman)}</td>
+      <td><b>${esc(k.ogrenci)}</b></td>
+      <td>${esc(k.veli)}</td>
+      <td><a href="tel:${esc(k.telefon)}">${esc(k.telefon)}</a></td>
+      <td>${esc(k.ilce)}</td>
+      <td>${esc(k.okul)}${k.okulManuel?'<span class="tag">elle</span>':''}<div class="muted" style="font-size:11px">${esc(k.kademe)}</div></td>
+      <td>${esc(k.sinif)}. Sınıf</td>
+      <td>${k.sinavTarihi ? trTarih(k.sinavTarihi)+' '+esc(k.sinavSaati||'') : '<span class="muted">Belirlenecek</span>'}</td>
+      <td>${esc(k.sube)}</td>
+      <td><input type="checkbox" class="cbArandi" ${k.arandi?'checked':''}></td>
+      <td><button class="wa ${k.waGonderildi?'sent':''}">${k.waGonderildi?'✓ Gönderildi':'WhatsApp'}</button></td>
+      <td class="not"><input class="notIn" value="${esc(k.not||'')}" placeholder="Not ekle"></td>
+      <td><button class="del" title="Sil">🗑</button></td>
+    </tr>`).join('');
+  const tum=KAYITLAR.length, ar=KAYITLAR.filter(k=>k.arandi).length;
+  const subeSay=SUBELER.map(s=>`<div class="stat"><b>${KAYITLAR.filter(k=>k.sube===s).length}</b><span>${s}</span></div>`).join('');
+  $('stats').innerHTML=`<div class="stat"><b>${tum}</b><span>Toplam başvuru</span></div><div class="stat"><b>${tum-ar}</b><span>Aranmayı bekleyen</span></div><div class="stat"><b>${L.length}</b><span>Filtrede görünen</span></div>`+subeSay;
+}
+['fAra','fSube','fSinif','fSinav','fArandi'].forEach(id=>$(id).addEventListener('input',ciz));
+
+$('tb').addEventListener('click',async e=>{
+  const tr=e.target.closest('tr[data-id]'); if(!tr) return;
+  const id=tr.dataset.id, k=KAYITLAR.find(x=>x.id===id); if(!k) return;
+  const ref=db.collection(COL_BASVURU).doc(id);
+  if(e.target.classList.contains('cbArandi')) await ref.update({arandi:e.target.checked});
+  if(e.target.classList.contains('wa')){
+    window.open('https://wa.me/9'+k.telefon+'?text='+encodeURIComponent(WA_MESAJ),'_blank');
+    if(!k.waGonderildi) await ref.update({waGonderildi:true});
+  }
+  if(e.target.classList.contains('del')){
+    if(confirm(k.ogrenci+' başvurusu silinsin mi?')) await ref.delete();
+  }
+});
+$('tb').addEventListener('change',async e=>{
+  if(!e.target.classList.contains('notIn')) return;
+  const id=e.target.closest('tr').dataset.id;
+  await db.collection(COL_BASVURU).doc(id).update({not:e.target.value.trim()});
+});
+
+$('excel').onclick=()=>{
+  const rows=filtreli().map(k=>({
+    'Başvuru Zamanı':zamanYaz(k.zaman),'Öğrenci':k.ogrenci,'Veli':k.veli,'Telefon':k.telefon,'İlçe':k.ilce,
+    'Okul Türü':k.kademe,'Okul':k.okul,'Okul Elle Yazıldı':k.okulManuel?'EVET':'','Sınıf':k.sinif+'. Sınıf',
+    'Sınav Tarihi':trTarih(k.sinavTarihi),'Sınav Saati':k.sinavSaati||'','Şube':k.sube,
+    'Arandı':k.arandi?'EVET':'HAYIR','WhatsApp':k.waGonderildi?'GÖNDERİLDİ':'','Not':k.not||'','Kaynak':k.kaynak||''
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows); ws['!cols']=Object.keys(rows[0]||{a:1}).map(()=>({wch:18}));
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Başvurular');
+  const d=new Date(); XLSX.writeFile(wb,`bursluluk-basvurular-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.xlsx`);
+};
+
+/* ---------- SINAV TARİHLERİ ---------- */
+function sinavSatir(s={sinif:'',tarih:'',saat:'',etiket:'',aktif:true}){
+  const tr=document.createElement('tr');
+  tr.innerHTML=`<td><input type="text" class="sSinif" value="${esc(s.sinif)}" placeholder="5,6"></td>
+    <td><input type="date" class="sTarih" value="${esc(s.tarih)}"></td>
+    <td><input type="time" class="sSaat" value="${esc(s.saat)}"></td>
+    <td><input type="text" class="sEtiket" value="${esc(s.etiket||'')}" style="width:220px"></td>
+    <td><input type="checkbox" class="sAktif" ${s.aktif!==false?'checked':''}></td>
+    <td><button class="del" title="Sil">🗑</button></td>`;
+  tr.querySelector('.del').onclick=()=>tr.remove();
+  $('sinavTbl').querySelector('tbody').appendChild(tr);
+}
+async function yukleSinavlar(){
+  const s=await db.doc(DOC_SINAV).get();
+  const liste=(s.exists&&s.data().liste)||[];
+  $('sinavTbl').querySelector('tbody').innerHTML='';
+  if(!liste.length) sinavSatir(); else liste.forEach(sinavSatir);
+}
+$('sinavEkle').onclick=()=>sinavSatir();
+$('sinavKaydet').onclick=async()=>{
+  const msg=$('sinavMsg'); msg.className='msg'; msg.textContent='';
+  const liste=[...$('sinavTbl').querySelectorAll('tbody tr')].map(tr=>({
+    sinif:tr.querySelector('.sSinif').value.replace(/\s/g,'').replace(/;/g,','),
+    tarih:tr.querySelector('.sTarih').value, saat:tr.querySelector('.sSaat').value,
+    etiket:tr.querySelector('.sEtiket').value.trim(), aktif:tr.querySelector('.sAktif').checked
+  })).filter(x=>x.sinif||x.tarih);
+  const hatali=liste.find(x=>!/^(\d{1,2})(,\d{1,2})*$/.test(x.sinif) || !x.tarih || x.sinif.split(',').some(n=>+n<1||+n>12));
+  if(hatali){ msg.className='msg err'; msg.textContent='Her satırda sınıflar (1–12, virgülle) ve tarih dolu olmalı.'; return; }
+  // aynı sınıf iki aktif oturumda olabilir (kişi seçer) — sadece bilgi ver
+  try{ await db.doc(DOC_SINAV).set({liste, guncelleme:firebase.firestore.FieldValue.serverTimestamp()}); msg.className='msg ok'; msg.textContent='Kaydedildi. Form hemen güncellendi.'; }
+  catch(e){ msg.className='msg err'; msg.textContent='Kaydedilemedi: '+e.code; }
+};
+
+/* ---------- OKUL LİSTESİ ---------- */
+let OKUL_ON={};
+function kademeNorm(k){ const t=trLow(k).trim(); if(t.startsWith('ilk')) return 'İlkokul'; if(t.startsWith('orta')) return 'Ortaokul'; if(t.includes('lise')) return 'Lise'; return ''; }
+function ilceNorm(i){ const t=trLow(i).trim(); return ILCELER.find(x=>trLow(x)===t)||''; }
+$('okulDosya').onchange=async e=>{
+  const f=e.target.files[0]; OKUL_ON={}; $('okulYukle').disabled=true; const msg=$('okulMsg'); msg.className='msg'; msg.textContent='';
+  if(!f) return;
+  const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+  let atlanan=0, toplam=0;
+  // başlık satırını atla
+  const start = rows.length && /ilçe|ilce/i.test(String(rows[0][0])) ? 1 : 0;
+  for(const r of rows.slice(start)){
+    const ilce=ilceNorm(r[0]), kad=kademeNorm(r[1]), okul=String(r[2]||'').trim();
+    if(!ilce||!kad||!okul){ if(String(r.join('')).trim()) atlanan++; continue; }
+    (OKUL_ON[ilce]=OKUL_ON[ilce]||new Map()).set(kad+'|'+trLow(okul),{kademe:kad,okul});
+    toplam++;
+  }
+  const ilceSay=Object.keys(OKUL_ON).length;
+  msg.textContent=`${ilceSay} ilçe, ${toplam} okul okundu`+(atlanan?` · ${atlanan} satır atlandı (ilçe/kademe tanınmadı)`:'');
+  $('okulYukle').disabled=!ilceSay;
+};
+$('okulYukle').onclick=async()=>{
+  const msg=$('okulMsg'); $('okulYukle').disabled=true;
+  try{
+    const batch=db.batch();
+    for(const [ilce,m] of Object.entries(OKUL_ON)){
+      const okullar=[...m.values()].sort((a,b)=>a.okul.localeCompare(b.okul,'tr'));
+      batch.set(db.collection(COL_OKUL).doc(ilce),{okullar});
+    }
+    await batch.commit();
+    msg.className='msg ok'; msg.textContent='Okul listesi yüklendi.'; OKUL_ON={}; $('okulDosya').value='';
+    yukleOkulSayilari();
+  }catch(e){ msg.className='msg err'; msg.textContent='Yüklenemedi: '+e.code; $('okulYukle').disabled=false; }
+};
+$('sablon').onclick=()=>{
+  const ws=XLSX.utils.aoa_to_sheet([['İlçe','Kademe','Okul Adı'],['Karşıyaka','Ortaokul','Örnek Ortaokulu']]);
+  ws['!cols']=[{wch:14},{wch:12},{wch:45}];
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Okullar'); XLSX.writeFile(wb,'okul-listesi-sablon.xlsx');
+};
+$('tEkle').onclick=async()=>{
+  const ilce=$('tIlce').value, kademe=$('tKademe').value, okul=$('tOkul').value.trim(), msg=$('tMsg');
+  if(!okul){ msg.className='msg err'; msg.textContent='Okul adını yazın.'; return; }
+  try{
+    await db.collection(COL_OKUL).doc(ilce).set({okullar:firebase.firestore.FieldValue.arrayUnion({kademe,okul})},{merge:true});
+    msg.className='msg ok'; msg.textContent=`${okul} eklendi.`; $('tOkul').value=''; yukleOkulSayilari();
+  }catch(e){ msg.className='msg err'; msg.textContent='Eklenemedi: '+e.code; }
+};
+async function yukleOkulSayilari(){
+  const snap=await db.collection(COL_OKUL).get();
+  const say={}; snap.forEach(d=>say[d.id]=(d.data().okullar||[]).length);
+  $('ilceSay').innerHTML=ILCELER.map(i=>`<div><span>${i}</span><b style="color:${say[i]?'var(--navy)':'#b3261e'}">${say[i]||0}</b></div>`).join('');
+}
+</script>
+</body>
+</html>
